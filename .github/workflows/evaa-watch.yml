@@ -1,0 +1,42 @@
+name: EVAA izleyici
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: evaa-watch
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Izleyiciyi çalıştır
+        env:
+          MIN_USD: "5000"
+          WATCH_MIN_USD: "1000"
+          OUT: data/evaa-feed.json
+          STATE: data/evaa-state.json
+        run: |
+          mkdir -p data
+          node evaa-watch.mjs
+      - name: Değişiklik varsa depoya yaz
+        run: |
+          git config user.name "evaa-bot"
+          git config user.email "evaa-bot@users.noreply.github.com"
+          git add data/
+          if git diff --cached --quiet; then
+            echo "Değişiklik yok"
+          else
+            git commit -m "EVAA veri güncellemesi [skip ci]"
+            git push
+          fi
