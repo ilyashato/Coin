@@ -24,6 +24,7 @@ jobs:
         env:
           MIN_USD: "5000"
           WATCH_MIN_USD: "1000"
+          BSC_RPC: "https://bsc-rpc.publicnode.com"
           OUT: data/evaa-feed.json
           STATE: data/evaa-state.json
         run: |
