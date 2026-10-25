@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EVAA Canlı Panel</title>
+<style>
+  :root {
+    --bg: #0b0f14; --card: #131a22; --line: #1f2a36; --text: #e8edf2; --mute: #8a97a6;
+    --buy: #2fbf71; --sell: #ef5b5b; --xfer: #4c9aff; --watch: #f5b13d;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 15px/1.45 -apple-system, system-ui, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 640px; margin: 0 auto; padding: 20px 16px 48px; }
+  h1 { font-size: 20px; margin: 0 0 2px; }
+  h2 { font-size: 14px; margin: 22px 0 10px; color: var(--mute); font-weight: 600;
+       text-transform: uppercase; letter-spacing: .04em; }
+  .sub { color: var(--mute); font-size: 13px; margin-bottom: 16px; }
+
+  /* Piyasa */
+  .mkt-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; margin-bottom: 12px; }
+  .mkt-price { font-size: 32px; font-weight: 700; line-height: 1.1; }
+  .mkt-ch { font-size: 14px; font-weight: 600; margin-top: 2px; }
+  .mkt-upd { color: var(--mute); font-size: 12px; text-align: right; }
+  .live-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--buy);
+              margin-right: 6px; vertical-align: middle; animation: pulse 2s infinite; }
+  .live-dot.off { background: var(--sell); animation: none; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .tile { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px; min-width: 0; }
+  .tile .k { color: var(--mute); font-size: 12px; }
+  .tile .v { font-size: 17px; font-weight: 650; margin-top: 2px; word-break: break-word; }
+  .tile .s { color: var(--mute); font-size: 12px; margin-top: 2px; }
+  .up { color: var(--buy); } .down { color: var(--sell); } .warn { color: var(--watch); }
+  .bar { height: 5px; border-radius: 3px; background: var(--line); margin-top: 8px; overflow: hidden; }
+  .bar > div { height: 100%; background: var(--xfer); }
+
+  /* Hareketler */
+  .chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 12px; }
+  .chip { flex: none; background: var(--card); border: 1px solid var(--line); color: var(--mute);
+          border-radius: 999px; padding: 7px 14px; font-size: 13px; cursor: pointer; }
+  .chip.on { color: var(--text); border-color: var(--text); }
+  .item { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--xfer);
+          border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; }
+  .item.buy { border-left-color: var(--buy); }
+  .item.sell { border-left-color: var(--sell); }
+  .row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+  .kind { font-weight: 650; }
+  .buy .kind { color: var(--buy); } .sell .kind { color: var(--sell); } .xfer .kind { color: var(--xfer); }
+  .usd { font-size: 18px; font-weight: 650; }
+  .meta { color: var(--mute); font-size: 13px; margin-top: 4px; word-break: break-all; }
+  .meta a { color: var(--mute); text-decoration: underline; text-underline-offset: 2px; }
+  .tag { display: inline-block; margin-top: 6px; font-size: 12px; color: var(--watch);
+         border: 1px solid var(--watch); border-radius: 6px; padding: 1px 7px; }
+  .empty, .err { color: var(--mute); text-align: center; padding: 28px 12px; border: 1px dashed var(--line);
+                 border-radius: 12px; }
+  .err { color: var(--sell); }
+  .foot { color: var(--mute); font-size: 12px; margin-top: 22px; text-align: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>EVAA Canlı Panel</h1>
+  <div class="sub" id="sub">Yükleniyor…</div>
+
+  <div class="mkt-head">
+    <div>
+      <div class="mkt-price" id="mPrice">–</div>
+      <div class="mkt-ch" id="mCh"></div>
+    </div>
+    <div class="mkt-upd" id="mUpd"></div>
+  </div>
+  <div class="grid" id="mGrid"></div>
+
+  <h2>Zincir hareketleri (BSC)</h2>
+  <div class="grid" id="stats" style="margin-bottom:14px">
+    <div class="tile"><div class="k">24s alım</div><div class="v" id="sBuy">–</div></div>
+    <div class="tile"><div class="k">24s satım</div><div class="v" id="sSell">–</div></div>
+    <div class="tile"><div class="k">24s net akış</div><div class="v" id="sNet">–</div></div>
+    <div class="tile"><div class="k">24s hareket</div><div class="v" id="sCnt">–</div></div>
+  </div>
+  <div class="chips" id="chips"></div>
+  <div id="list"></div>
+
+  <div class="foot">Piyasa verisi CoinGecko, DefiLlama, Binance/Bybit ve alternative.me kaynaklarından canlı çekilir.
+    Zincir hareketleri BNB Smart Chain üzerindeki EVAA havuzu ve transferlerinden derlenir, yaklaşık 10 dakikada bir güncellenir.
+    Bilgilendirme amaçlıdır, yatırım tavsiyesi değildir.</div>
+</div>
+
+<script>
+/* ================= Ayarlar ================= */
+const FEED_URL = "https://raw.githubusercontent.com/ilyashato/Coin/main/data/evaa-feed.json";
+const CG = "https://api.coingecko.com/api/v3";
+const CG_ID = "evaa-protocol";        // CoinGecko API kimliği
+const LLAMA_SLUG = "evaa-protocol";   // DefiLlama adı bulunamazsa otomatik aranır
+const PERP = "EVAAUSDT";              // vadeli işlem sembolü
+const FEED_REFRESH_MS = 5 * 60 * 1000;
+const MKT_REFRESH_MS = 90 * 1000;     // CoinGecko ücretsiz sınırına takılmamak için 90 sn
+
+/* ================= Yardımcılar ================= */
+const usdFmt = new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 0 });
+const numFmt = new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 2 });
+const ok = (n) => n !== null && n !== undefined && isFinite(n);
+const money = (n) => "$" + usdFmt.format(Math.round(n));
+const compact = (n) => {
+  if (!ok(n)) return "–";
+  const a = Math.abs(n);
+  if (a >= 1e9) return "$" + (n / 1e9).toFixed(2) + "B";
+  if (a >= 1e6) return "$" + (n / 1e6).toFixed(1) + "M";
+  if (a >= 1e3) return "$" + (n / 1e3).toFixed(1) + "K";
+  return "$" + n.toFixed(2);
+};
+const px = (n) => ok(n) ? "$" + Number(n).toFixed(n < 1 ? 4 : 2) : "–";
+const pct = (n, d) => ok(n) ? (n >= 0 ? "+" : "−") + Math.abs(n).toFixed(d == null ? 1 : d) + "%" : "–";
+const short = (a) => a ? a.slice(0, 6) + "…" + a.slice(-4) : "–";
+
+function ago(iso) {
+  const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+  if (s < 90) return "az önce";
+  if (s < 3600) return Math.round(s / 60) + " dk önce";
+  if (s < 86400) return Math.round(s / 3600) + " sa önce";
+  return Math.round(s / 86400) + " gün önce";
+}
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
+function link(href, text) {
+  const a = el("a", null, text);
+  a.href = href; a.target = "_blank"; a.rel = "noopener";
+  return a;
+}
+async function getJson(url) {
+  const r = await fetch(url, { cache: "no-store" });
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  return r.json();
+}
+
+/* ================= Piyasa verisi (canlı) ================= */
+async function fetchCG() {
+  const j = await getJson(CG + "/coins/" + CG_ID +
+    "?localization=false&tickers=false&community_data=false&developer_data=false&sparkline=true");
+  const m = j.market_data;
+  const sp = (m.sparkline_7d && m.sparkline_7d.price) || [];
+  const p = m.current_price.usd;
+  const maxSupply = m.max_supply || m.total_supply || null;
+  return {
+    price: p,
+    ch24: m.price_change_percentage_24h,
+    high24: m.high_24h && m.high_24h.usd, low24: m.low_24h && m.low_24h.usd,
+    high7: sp.length ? Math.max.apply(null, sp) : null,
+    low7: sp.length ? Math.min.apply(null, sp) : null,
+    mcap: m.market_cap && m.market_cap.usd,
+    fdv: (m.fully_diluted_valuation && m.fully_diluted_valuation.usd) || (maxSupply ? p * maxSupply : null),
+    vol: m.total_volume && m.total_volume.usd,
+    ath: m.ath && m.ath.usd, athCh: m.ath_change_percentage && m.ath_change_percentage.usd,
+    atl: m.atl && m.atl.usd,
+    circPct: (m.circulating_supply && maxSupply) ? (m.circulating_supply / maxSupply) * 100 : null
+  };
+}
+
+async function fetchLlama() {
+  let j;
+  try {
+    j = await getJson("https://api.llama.fi/protocol/" + LLAMA_SLUG);
+  } catch (e) {
+    const list = await getJson("https://api.llama.fi/protocols");
+    const p = list.find((x) => /evaa/i.test(x.name || "") || /evaa/i.test(x.slug || ""));
+    if (!p) throw e;
+    j = await getJson("https://api.llama.fi/protocol/" + p.slug);
+  }
+  const t = j.tvl || [];
+  const last = t.length ? t[t.length - 1].totalLiquidityUSD : null;
+  const prev = t.length > 31 ? t[t.length - 31].totalLiquidityUSD : null;
+  const cur = j.currentChainTvls || {};
+  let borrowed = ok(cur.borrowed) ? cur.borrowed : null;
+  if (borrowed === null) {
+    let s = 0, f = false;
+    for (const k in cur) if (/-borrowed$/i.test(k)) { s += cur[k]; f = true; }
+    if (f) borrowed = s;
+  }
+  return { tvl: last, tvl30: (ok(last) && prev) ? (last / prev - 1) * 100 : null, borrowed: borrowed };
+}
+
+async function fetchPerp() {
+  try {
+    const r = await Promise.all([
+      getJson("https://fapi.binance.com/fapi/v1/premiumIndex?symbol=" + PERP),
+      getJson("https://fapi.binance.com/fapi/v1/openInterest?symbol=" + PERP),
+      getJson("https://fapi.binance.com/fapi/v1/ticker/24hr?symbol=" + PERP)
+    ]);
+    return { src: "Binance", funding: Number(r[0].lastFundingRate) * 100,
+             oi: Number(r[1].openInterest) * Number(r[0].markPrice), vol: Number(r[2].quoteVolume) };
+  } catch (e) {
+    const j = await getJson("https://api.bybit.com/v5/market/tickers?category=linear&symbol=" + PERP);
+    const t = j.result && j.result.list && j.result.list[0];
+    if (!t) throw e;
+    return { src: "Bybit", funding: Number(t.fundingRate) * 100,
+             oi: Number(t.openInterestValue), vol: Number(t.turnover24h) };
+  }
+}
+
+async function fetchDom() {
+  const j = await getJson(CG + "/global");
+  return j.data.market_cap_percentage.btc;
+}
+const FNG_TR = { "Extreme Fear": "Aşırı korku", "Fear": "Korku", "Neutral": "Nötr",
+                 "Greed": "Açgözlülük", "Extreme Greed": "Aşırı açgözlülük" };
+async function fetchFng() {
+  const j = await getJson("https://api.alternative.me/fng/?limit=1");
+  const d = j.data[0];
+  return { v: Number(d.value), c: FNG_TR[d.value_classification] || d.value_classification };
+}
+
+function tile(label, value, sub, cls, bar) {
+  const t = el("div", "tile");
+  t.appendChild(el("div", "k", label));
+  t.appendChild(el("div", "v" + (cls ? " " + cls : ""), value));
+  if (sub) t.appendChild(el("div", "s", sub));
+  if (ok(bar)) {
+    const b = el("div", "bar"), f = el("div");
+    f.style.width = Math.max(0, Math.min(100, bar * 100)) + "%";
+    b.appendChild(f); t.appendChild(b);
+  }
+  return t;
+}
+const frac = (p, lo, hi) => (ok(p) && ok(lo) && ok(hi) && hi > lo) ? (p - lo) / (hi - lo) : null;
+
+function renderMarket(S, failed) {
+  const cg = S.cg || {}, ll = S.llama || {}, pp = S.perp || {};
+  const priceEl = document.getElementById("mPrice");
+  priceEl.textContent = px(cg.price);
+  const ch = document.getElementById("mCh");
+  ch.textContent = ok(cg.ch24) ? pct(cg.ch24, 2) + " (24s)" : "";
+  ch.className = "mkt-ch " + (ok(cg.ch24) ? (cg.ch24 >= 0 ? "up" : "down") : "");
+
+  const upd = document.getElementById("mUpd");
+  upd.textContent = "";
+  upd.appendChild(el("span", "live-dot" + (failed >= 5 ? " off" : "")));
+  upd.appendChild(document.createTextNode(
+    new Date().toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) +
+    (failed ? " · " + failed + " kaynak yok" : "")));
+
+  const g = document.getElementById("mGrid");
+  g.textContent = "";
+  g.appendChild(tile("24s aralık", ok(cg.low24) ? px(cg.low24) + " – " + px(cg.high24) : "–", null, null,
+                     frac(cg.price, cg.low24, cg.high24)));
+  g.appendChild(tile("7g aralık", ok(cg.low7) ? px(cg.low7) + " – " + px(cg.high7) : "–", null, null,
+                     frac(cg.price, cg.low7, cg.high7)));
+  g.appendChild(tile("Piyasa değeri", compact(cg.mcap), null));
+  g.appendChild(tile("FDV", compact(cg.fdv), ok(cg.circPct) ? "dolaşımda %" + cg.circPct.toFixed(0) : null));
+  g.appendChild(tile("Spot hacim (24s)", compact(cg.vol), null));
+  g.appendChild(tile("Vadeli hacim (24s)", compact(pp.vol),
+    (ok(pp.vol) && ok(cg.vol) && cg.vol > 0) ? "≈" + Math.round(pp.vol / cg.vol) + "x spot" + (pp.src ? " · " + pp.src : "") : (pp.src || null)));
+  g.appendChild(tile("Vadeli açık pozisyon", compact(pp.oi),
+    (ok(pp.oi) && ok(cg.mcap) && cg.mcap > 0) ? (pp.oi / cg.mcap).toFixed(1) + "x piyasa değeri" : null));
+  const fcls = ok(pp.funding) ? (pp.funding > 0 ? "warn" : pp.funding < 0 ? "up" : "") : "";
+  g.appendChild(tile("Funding (son oran)", ok(pp.funding) ? pct(pp.funding, 3) : "–",
+    ok(pp.funding) ? (pp.funding > 0 ? "uzunlar ödüyor" : pp.funding < 0 ? "kısalar ödüyor" : "nötr") : null, fcls));
+  g.appendChild(tile("TVL", compact(ll.tvl), ok(ll.tvl30) ? pct(ll.tvl30) + " (30g)" : null,
+                     null));
+  g.appendChild(tile("Aktif borç", compact(ll.borrowed),
+    (ok(ll.borrowed) && ok(ll.tvl) && ll.tvl > 0) ? "kullanım %" + (ll.borrowed / ll.tvl * 100).toFixed(0) : null));
+  g.appendChild(tile("FDV / TVL", (ok(cg.fdv) && ok(ll.tvl) && ll.tvl > 0) ? (cg.fdv / ll.tvl).toFixed(1) + "x" : "–", null));
+  g.appendChild(tile("ATH / ATL", ok(cg.ath) ? px(cg.ath) + " / " + px(cg.atl) : "–",
+    ok(cg.athCh) ? "ATH'den " + pct(cg.athCh, 0) : null));
+  g.appendChild(tile("BTC dominansı", ok(S.dom) ? "%" + S.dom.toFixed(1) : "–", null));
+  g.appendChild(tile("Korku & Açgözlülük", S.fng ? String(S.fng.v) : "–", S.fng ? S.fng.c : null));
+}
+
+async function loadMarket() {
+  const jobs = [fetchCG(), fetchLlama(), fetchPerp(), fetchDom(), fetchFng()];
+  const res = await Promise.allSettled(jobs);
+  const val = (i) => res[i].status === "fulfilled" ? res[i].value : null;
+  const failed = res.filter((r) => r.status === "rejected").length;
+  renderMarket({ cg: val(0), llama: val(1), perp: val(2), dom: val(3), fng: val(4) }, failed);
+}
+
+/* ================= Zincir hareketleri ================= */
+let events = [], filter = "all";
+const FILTERS = [["all", "Hepsi"], ["buy", "Alım"], ["sell", "Satım"], ["transfer", "Transfer"], ["watch", "İzleme listesi"]];
+const kindOf = (e) => e.type === "swap" ? (e.side === "buy" ? "buy" : "sell") : "xfer";
+
+function renderStats() {
+  const since = Date.now() - 24 * 3600 * 1000;
+  const day = events.filter((e) => new Date(e.time).getTime() >= since);
+  const buy = day.filter((e) => e.type === "swap" && e.side === "buy").reduce((t, e) => t + (e.usd || 0), 0);
+  const sell = day.filter((e) => e.type === "swap" && e.side === "sell").reduce((t, e) => t + (e.usd || 0), 0);
+  document.getElementById("sBuy").textContent = money(buy);
+  document.getElementById("sSell").textContent = money(sell);
+  const net = document.getElementById("sNet");
+  net.textContent = (buy - sell >= 0 ? "+" : "−") + money(Math.abs(buy - sell));
+  net.style.color = buy - sell >= 0 ? "var(--buy)" : "var(--sell)";
+  document.getElementById("sCnt").textContent = String(day.length);
+}
+function renderChips() {
+  const box = document.getElementById("chips");
+  box.textContent = "";
+  for (const f of FILTERS) {
+    const c = el("button", "chip" + (f[0] === filter ? " on" : ""), f[1]);
+    c.onclick = () => { filter = f[0]; renderChips(); renderList(); };
+    box.appendChild(c);
+  }
+}
+function matches(e) {
+  if (filter === "all") return true;
+  if (filter === "buy") return e.type === "swap" && e.side === "buy";
+  if (filter === "sell") return e.type === "swap" && e.side === "sell";
+  if (filter === "transfer") return e.type === "transfer";
+  if (filter === "watch") return (e.tags || []).length > 0;
+  return true;
+}
+function renderList() {
+  const box = document.getElementById("list");
+  box.textContent = "";
+  const rows = events.filter(matches);
+  if (!rows.length) {
+    box.appendChild(el("div", "empty",
+      events.length ? "Bu filtrede hareket yok." : "Henüz eşiği aşan hareket yok. İzleyici düzenli çalışıyor, yeni kayıtlar burada görünecek."));
+    return;
+  }
+  for (const e of rows.slice(0, 100)) {
+    const k = kindOf(e);
+    const card = el("div", "item " + k);
+    const top = el("div", "row");
+    top.appendChild(el("span", "kind", e.type === "swap" ? (e.side === "buy" ? "Alım" : "Satım") : "Transfer"));
+    top.appendChild(el("span", "usd", money(e.usd || 0)));
+    card.appendChild(top);
+    const amt = el("div", "meta", numFmt.format(e.evaa || 0) + " EVAA · " + ago(e.time) + " · ");
+    amt.appendChild(link("https://bscscan.com/tx/" + e.hash, "işlem"));
+    card.appendChild(amt);
+    const who = el("div", "meta");
+    if (e.type === "swap") {
+      who.appendChild(document.createTextNode("Cüzdan: "));
+      who.appendChild(link("https://bscscan.com/address/" + e.wallet, short(e.wallet)));
+    } else {
+      who.appendChild(link("https://bscscan.com/address/" + e.from, short(e.from)));
+      who.appendChild(document.createTextNode(" → "));
+      who.appendChild(link("https://bscscan.com/address/" + e.to, short(e.to)));
+    }
+    card.appendChild(who);
+    for (const t of (e.tags || [])) card.appendChild(el("span", "tag", t));
+    box.appendChild(card);
+  }
+}
+async function loadFeed() {
+  const sub = document.getElementById("sub");
+  try {
+    const r = await fetch(FEED_URL + "?t=" + Date.now(), { cache: "no-store" });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const data = await r.json();
+    events = (Array.isArray(data) ? data : []).sort((a, b) => new Date(b.time) - new Date(a.time));
+    sub.textContent = "Zincir kayıtları: " + events.length + " · son yenileme " +
+      new Date().toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
+    renderStats(); renderChips(); renderList();
+  } catch (err) {
+    sub.textContent = "Zincir kayıtları alınamadı";
+    const box = document.getElementById("list");
+    box.textContent = "";
+    box.appendChild(el("div", "err", "Veri dosyası okunamadı (" + err.message + "). Biraz sonra tekrar denenecek."));
+  }
+}
+
+/* ================= Başlat ================= */
+renderChips();
+loadMarket();
+loadFeed();
+setInterval(loadMarket, MKT_REFRESH_MS);
+setInterval(loadFeed, FEED_REFRESH_MS);
+</script>
+</body>
+</html>
