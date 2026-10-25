@@ -27,11 +27,18 @@
               margin-right: 6px; vertical-align: middle; animation: pulse 2s infinite; }
   .live-dot.off { background: var(--sell); animation: none; }
   @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
-  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; align-items: start; }
   .tile { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px; min-width: 0; }
-  .tile .k { color: var(--mute); font-size: 12px; }
+  .tile .k { color: var(--mute); font-size: 12px; display: flex; justify-content: space-between;
+             align-items: center; gap: 6px; }
   .tile .v { font-size: 17px; font-weight: 650; margin-top: 2px; word-break: break-word; }
   .tile .s { color: var(--mute); font-size: 12px; margin-top: 2px; }
+  .i { flex: none; width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--mute);
+       background: none; color: var(--mute); font: italic 600 12px Georgia, serif; line-height: 1;
+       padding: 0; cursor: pointer; }
+  .i:active { color: var(--text); border-color: var(--text); }
+  .note { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); color: var(--mute);
+          font-size: 12px; line-height: 1.5; }
   .up { color: var(--buy); } .down { color: var(--sell); } .warn { color: var(--watch); }
   .bar { height: 5px; border-radius: 3px; background: var(--line); margin-top: 8px; overflow: hidden; }
   .bar > div { height: 100%; background: var(--xfer); }
@@ -74,18 +81,13 @@
   <div class="grid" id="mGrid"></div>
 
   <h2>Zincir hareketleri (BSC)</h2>
-  <div class="grid" id="stats" style="margin-bottom:14px">
-    <div class="tile"><div class="k">24s alım</div><div class="v" id="sBuy">–</div></div>
-    <div class="tile"><div class="k">24s satım</div><div class="v" id="sSell">–</div></div>
-    <div class="tile"><div class="k">24s net akış</div><div class="v" id="sNet">–</div></div>
-    <div class="tile"><div class="k">24s hareket</div><div class="v" id="sCnt">–</div></div>
-  </div>
+  <div class="grid" id="stats" style="margin-bottom:14px"></div>
   <div class="chips" id="chips"></div>
   <div id="list"></div>
 
   <div class="foot">Piyasa verisi CoinGecko, DefiLlama, Binance/Bybit ve alternative.me kaynaklarından canlı çekilir.
     Zincir hareketleri BNB Smart Chain üzerindeki EVAA havuzu ve transferlerinden derlenir, yaklaşık 10 dakikada bir güncellenir.
-    Bilgilendirme amaçlıdır, yatırım tavsiyesi değildir.</div>
+    <b>i</b> düğmesindeki notlar genel okuma rehberidir. Bilgilendirme amaçlıdır, yatırım tavsiyesi değildir.</div>
 </div>
 
 <script>
@@ -97,6 +99,29 @@ const LLAMA_SLUG = "evaa-protocol";   // DefiLlama adı bulunamazsa otomatik ara
 const PERP = "EVAAUSDT";              // vadeli işlem sembolü
 const FEED_REFRESH_MS = 5 * 60 * 1000;
 const MKT_REFRESH_MS = 90 * 1000;     // CoinGecko ücretsiz sınırına takılmamak için 90 sn
+
+/* ================= Nasıl yorumlanır? (i notları) ================= */
+const INFO = {
+  "24s aralık": "Son 24 saatteki en düşük ve en yüksek fiyat. Çubuk, güncel fiyatın bu aralığın neresinde olduğunu gösterir: sola yakınsa günün dibine, sağa yakınsa tepesine yakın demektir. Aralık dar ise fiyat sakin, geniş ise oynak seyrediyor demektir.",
+  "7g aralık": "Aynı mantığın haftalık hali. Fiyatın haftalık aralığın altına inmesi zayıflık, üstüne çıkması güç işareti olarak izlenir. Tek başına karar verdirmez, hacim ve zincir hareketleriyle birlikte okunur.",
+  "Piyasa değeri": "Dolaşımdaki arz × fiyat. Birkaç milyon dolarlık küçük piyasa değerlerinde fiyat, görece küçük paralarla da kolayca oynayabilir. Bu hem hızlı yükseliş hem sert düşüş riski demektir.",
+  "FDV": "Tüm arz, yani kilitli token'lar da dolaşıma girseydi oluşacak piyasa değeri. FDV, piyasa değerinden çok büyükse ileride açılacak kilitli token'lardan gelebilecek satış baskısı (arz baskısı) söz konusudur. Altındaki oran, arzın ne kadarının dolaşımda olduğunu gösterir.",
+  "Spot hacim (24s)": "Son 24 saatte gerçekleşen alım-satım tutarı. Piyasa değerine göre çok düşükse likidite zayıftır: büyük bir emir fiyatı sert oynatır ve pozisyondan çıkmak zorlaşır.",
+  "Vadeli hacim (24s)": "Vadeli (perp) piyasadaki işlem hacmi. Spot hacmin kat kat üstündeyse fiyatı gerçek alıcı-satıcıdan çok kaldıraçlı, kısa vadeli işlemlerin yönlendirdiği düşünülür. Böyle piyasalarda hareketler daha sert olabilir.",
+  "Vadeli açık pozisyon": "Açık duran kaldıraçlı pozisyonların toplam değeri. Piyasa değerine göre çok büyükse küçük bir fiyat hareketi bile zincirleme tasfiyelere (likidasyon) yol açıp hareketi büyütebilir.",
+  "Funding (son oran)": "Pozitifse long açanlar short açanlara ödüyor: çoğunluk yükselişe oynuyor, pozisyonlar bir tarafta kalabalık. Negatifse tersi. Fiyat düşerken funding pozitif kalıyorsa long'ların sıkıştığı bir tablo olabilir. Ödeme aralığı borsaya göre 4 veya 8 saattir.",
+  "TVL": "Protokole kilitlenen toplam değer. Kredi protokolünde kullanıcı güveninin ve kullanımın temel göstergesidir. Artıyorsa para giriyor, düşüyorsa çıkıyor demektir. Parantezdeki 30 günlük değişim yönü gösterir. Fiyat düşerken TVL de düşüyorsa zayıflık birbirini besliyor olabilir.",
+  "Aktif borç": "Protokolden şu an borç alınmış tutar. Kullanım oranı borç / TVL'dir. Yüksek oran borç talebinin ve faiz gelirinin güçlü olduğunu ama likiditenin sıkışabileceğini, düşük oran ise protokole talebin zayıf olduğunu gösterir.",
+  "FDV / TVL": "Protokolün kilitli değerine göre kaç kat fiyatlandığı. Düşükse görece ucuz, yüksekse görece pahalı fiyatlandığı yorumu yapılır. Tek başına anlamlı değildir, benzer kredi protokolleriyle kıyaslanmalıdır.",
+  "ATH / ATL": "Tüm zamanların en yüksek ve en düşük fiyatı. ATH'den uzaklık, zirveden ne kadar değer kaybedildiğini gösterir. ATL'ye yakınlık dip bölgesi anlamına gelir ama dip olacağının garantisi değildir.",
+  "BTC dominansı": "Toplam kripto piyasa değerinde Bitcoin'in payı. Yükselirken altcoin'ler genelde BTC'ye karşı zayıflar, düşerken altcoin'lere para akışı artar. EVAA gibi küçük coin'ler bu döngüden daha sert etkilenir.",
+  "Korku & Açgözlülük": "0-100 arası piyasa duyarlılığı. 0-25 aşırı korku, 75 üstü aşırı açgözlülük bölgesidir. Genel ruh halini gösterir, tek başına al-sat zamanlaması için kullanılmaz.",
+  "24s alım": "Son 24 saatte havuzda eşik üstü alımların toplam tutarı. Sadece eşiği aşan işlemleri içerir, küçük işlemler görünmez.",
+  "24s satım": "Son 24 saatte havuzda eşik üstü satımların toplam tutarı. Alıma göre belirgin şekilde büyükse satış baskısı vardır.",
+  "24s net akış": "Alım eksi satım. Artıdaysa büyük işlemlerde net alım, eksideyse net satım baskısı var demektir. Az sayıda işleme dayandığında yanıltıcı olabilir.",
+  "24s hareket": "Son 24 saatte eşiği aşan işlem sayısı. Sayı arttığında büyük cüzdanlar daha aktif demektir. İzleme listesi filtresi, proje cüzdanının hareketlerini ayrı gösterir."
+};
+const openInfo = new Set();   // açık notlar yenilemede kapanmasın
 
 /* ================= Yardımcılar ================= */
 const usdFmt = new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 0 });
@@ -215,24 +240,42 @@ async function fetchFng() {
   return { v: Number(d.value), c: FNG_TR[d.value_classification] || d.value_classification };
 }
 
+/* Kutu: etiket + i düğmesi, değer, alt satır, isteğe bağlı çubuk, açılır not */
 function tile(label, value, sub, cls, bar) {
   const t = el("div", "tile");
-  t.appendChild(el("div", "k", label));
+  const k = el("div", "k");
+  k.appendChild(el("span", null, label));
+  const info = INFO[label];
+  let note = null;
+  if (info) {
+    const b = el("button", "i", "i");
+    b.type = "button";
+    b.title = "Nasıl yorumlanır?";
+    note = el("div", "note", info);
+    note.style.display = openInfo.has(label) ? "block" : "none";
+    b.onclick = () => {
+      const open = note.style.display === "none";
+      note.style.display = open ? "block" : "none";
+      if (open) openInfo.add(label); else openInfo.delete(label);
+    };
+    k.appendChild(b);
+  }
+  t.appendChild(k);
   t.appendChild(el("div", "v" + (cls ? " " + cls : ""), value));
   if (sub) t.appendChild(el("div", "s", sub));
   if (ok(bar)) {
-    const b = el("div", "bar"), f = el("div");
+    const bb = el("div", "bar"), f = el("div");
     f.style.width = Math.max(0, Math.min(100, bar * 100)) + "%";
-    b.appendChild(f); t.appendChild(b);
+    bb.appendChild(f); t.appendChild(bb);
   }
+  if (note) t.appendChild(note);
   return t;
 }
 const frac = (p, lo, hi) => (ok(p) && ok(lo) && ok(hi) && hi > lo) ? (p - lo) / (hi - lo) : null;
 
 function renderMarket(S, failed) {
   const cg = S.cg || {}, ll = S.llama || {}, pp = S.perp || {};
-  const priceEl = document.getElementById("mPrice");
-  priceEl.textContent = px(cg.price);
+  document.getElementById("mPrice").textContent = px(cg.price);
   const ch = document.getElementById("mCh");
   ch.textContent = ok(cg.ch24) ? pct(cg.ch24, 2) + " (24s)" : "";
   ch.className = "mkt-ch " + (ok(cg.ch24) ? (cg.ch24 >= 0 ? "up" : "down") : "");
@@ -260,8 +303,7 @@ function renderMarket(S, failed) {
   const fcls = ok(pp.funding) ? (pp.funding > 0 ? "warn" : pp.funding < 0 ? "up" : "") : "";
   g.appendChild(tile("Funding (son oran)", ok(pp.funding) ? pct(pp.funding, 3) : "–",
     ok(pp.funding) ? (pp.funding > 0 ? "uzunlar ödüyor" : pp.funding < 0 ? "kısalar ödüyor" : "nötr") : null, fcls));
-  g.appendChild(tile("TVL", compact(ll.tvl), ok(ll.tvl30) ? pct(ll.tvl30) + " (30g)" : null,
-                     null));
+  g.appendChild(tile("TVL", compact(ll.tvl), ok(ll.tvl30) ? pct(ll.tvl30) + " (30g)" : null));
   g.appendChild(tile("Aktif borç", compact(ll.borrowed),
     (ok(ll.borrowed) && ok(ll.tvl) && ll.tvl > 0) ? "kullanım %" + (ll.borrowed / ll.tvl * 100).toFixed(0) : null));
   g.appendChild(tile("FDV / TVL", (ok(cg.fdv) && ok(ll.tvl) && ll.tvl > 0) ? (cg.fdv / ll.tvl).toFixed(1) + "x" : "–", null));
@@ -272,29 +314,33 @@ function renderMarket(S, failed) {
 }
 
 async function loadMarket() {
-  const jobs = [fetchCG(), fetchLlama(), fetchPerp(), fetchDom(), fetchFng()];
-  const res = await Promise.allSettled(jobs);
+  const res = await Promise.allSettled([fetchCG(), fetchLlama(), fetchPerp(), fetchDom(), fetchFng()]);
   const val = (i) => res[i].status === "fulfilled" ? res[i].value : null;
   const failed = res.filter((r) => r.status === "rejected").length;
   renderMarket({ cg: val(0), llama: val(1), perp: val(2), dom: val(3), fng: val(4) }, failed);
 }
 
 /* ================= Zincir hareketleri ================= */
-let events = [], filter = "all";
+let events = [], filter = "all", feedLoaded = false;
 const FILTERS = [["all", "Hepsi"], ["buy", "Alım"], ["sell", "Satım"], ["transfer", "Transfer"], ["watch", "İzleme listesi"]];
 const kindOf = (e) => e.type === "swap" ? (e.side === "buy" ? "buy" : "sell") : "xfer";
 
 function renderStats() {
+  const g = document.getElementById("stats");
+  g.textContent = "";
+  if (!feedLoaded) {
+    for (const l of ["24s alım", "24s satım", "24s net akış", "24s hareket"]) g.appendChild(tile(l, "–", null));
+    return;
+  }
   const since = Date.now() - 24 * 3600 * 1000;
   const day = events.filter((e) => new Date(e.time).getTime() >= since);
   const buy = day.filter((e) => e.type === "swap" && e.side === "buy").reduce((t, e) => t + (e.usd || 0), 0);
   const sell = day.filter((e) => e.type === "swap" && e.side === "sell").reduce((t, e) => t + (e.usd || 0), 0);
-  document.getElementById("sBuy").textContent = money(buy);
-  document.getElementById("sSell").textContent = money(sell);
-  const net = document.getElementById("sNet");
-  net.textContent = (buy - sell >= 0 ? "+" : "−") + money(Math.abs(buy - sell));
-  net.style.color = buy - sell >= 0 ? "var(--buy)" : "var(--sell)";
-  document.getElementById("sCnt").textContent = String(day.length);
+  const net = buy - sell;
+  g.appendChild(tile("24s alım", money(buy), null));
+  g.appendChild(tile("24s satım", money(sell), null));
+  g.appendChild(tile("24s net akış", (net >= 0 ? "+" : "−") + money(Math.abs(net)), null, net >= 0 ? "up" : "down"));
+  g.appendChild(tile("24s hareket", String(day.length), null));
 }
 function renderChips() {
   const box = document.getElementById("chips");
@@ -353,6 +399,7 @@ async function loadFeed() {
     if (!r.ok) throw new Error("HTTP " + r.status);
     const data = await r.json();
     events = (Array.isArray(data) ? data : []).sort((a, b) => new Date(b.time) - new Date(a.time));
+    feedLoaded = true;
     sub.textContent = "Zincir kayıtları: " + events.length + " · son yenileme " +
       new Date().toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
     renderStats(); renderChips(); renderList();
@@ -365,6 +412,7 @@ async function loadFeed() {
 }
 
 /* ================= Başlat ================= */
+renderStats();
 renderChips();
 loadMarket();
 loadFeed();
