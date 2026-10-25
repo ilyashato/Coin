@@ -43,6 +43,8 @@
   .bar { height: 5px; border-radius: 3px; background: var(--line); margin-top: 8px; overflow: hidden; }
   .bar > div { height: 100%; background: var(--xfer); }
 
+  .diag { color: var(--mute); font-size: 11px; margin-top: 8px; word-break: break-word; }
+
   /* Hareketler */
   .chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 12px; }
   .chip { flex: none; background: var(--card); border: 1px solid var(--line); color: var(--mute);
@@ -79,6 +81,7 @@
     <div class="mkt-upd" id="mUpd"></div>
   </div>
   <div class="grid" id="mGrid"></div>
+  <div class="diag" id="diag"></div>
 
   <h2>Zincir hareketleri (BSC)</h2>
   <div class="grid" id="stats" style="margin-bottom:14px"></div>
@@ -97,6 +100,11 @@ const CG = "https://api.coingecko.com/api/v3";
 const CG_ID = "evaa-protocol";        // CoinGecko API kimliği
 const LLAMA_SLUG = "evaa-protocol";   // DefiLlama adı bulunamazsa otomatik aranır
 const PERP = "EVAAUSDT";              // vadeli işlem sembolü
+const BSC_TOKEN = "0xaa036928c9c0df07d525b55ea8ee690bb5a628c1";
+const CG_KEY = "";                    // isteğe bağlı: CoinGecko ücretsiz "Demo" anahtarı
+function cgUrl(path) {
+  return CG + path + (CG_KEY ? (path.indexOf("?") >= 0 ? "&" : "?") + "x_cg_demo_api_key=" + encodeURIComponent(CG_KEY) : "");
+}
 const FEED_REFRESH_MS = 5 * 60 * 1000;
 const MKT_REFRESH_MS = 90 * 1000;     // CoinGecko ücretsiz sınırına takılmamak için 90 sn
 
@@ -166,8 +174,8 @@ async function getJson(url) {
 
 /* ================= Piyasa verisi (canlı) ================= */
 async function fetchCG() {
-  const j = await getJson(CG + "/coins/" + CG_ID +
-    "?localization=false&tickers=false&community_data=false&developer_data=false&sparkline=true");
+  const j = await getJson(cgUrl("/coins/" + CG_ID +
+    "?localization=false&tickers=false&community_data=false&developer_data=false&sparkline=true"));
   const m = j.market_data;
   const sp = (m.sparkline_7d && m.sparkline_7d.price) || [];
   const p = m.current_price.usd;
@@ -185,6 +193,15 @@ async function fetchCG() {
     atl: m.atl && m.atl.usd,
     circPct: (m.circulating_supply && maxSupply) ? (m.circulating_supply / maxSupply) * 100 : null
   };
+}
+
+/* Yedek: GeckoTerminal (anahtarsız) - BSC üzerindeki token verisi */
+async function fetchGT() {
+  const j = await getJson("https://api.geckoterminal.com/api/v2/networks/bsc/tokens/" + BSC_TOKEN);
+  const a = j.data.attributes;
+  const n = (v) => (v === null || v === undefined || v === "") ? null : Number(v);
+  return { price: n(a.price_usd), mcap: n(a.market_cap_usd), fdv: n(a.fdv_usd),
+           vol: a.volume_usd ? n(a.volume_usd.h24) : null };
 }
 
 async function fetchLlama() {
@@ -210,27 +227,51 @@ async function fetchLlama() {
   return { tvl: last, tvl30: (ok(last) && prev) ? (last / prev - 1) * 100 : null, borrowed: borrowed };
 }
 
+/* Vadeli işlem: funding, açık pozisyon, hacim + fiyat/aralık/ATH yedeği */
 async function fetchPerp() {
+  const base = "https://fapi.binance.com/fapi/v1/";
   try {
     const r = await Promise.all([
-      getJson("https://fapi.binance.com/fapi/v1/premiumIndex?symbol=" + PERP),
-      getJson("https://fapi.binance.com/fapi/v1/openInterest?symbol=" + PERP),
-      getJson("https://fapi.binance.com/fapi/v1/ticker/24hr?symbol=" + PERP)
+      getJson(base + "premiumIndex?symbol=" + PERP),
+      getJson(base + "openInterest?symbol=" + PERP),
+      getJson(base + "ticker/24hr?symbol=" + PERP)
     ]);
-    return { src: "Binance", funding: Number(r[0].lastFundingRate) * 100,
-             oi: Number(r[1].openInterest) * Number(r[0].markPrice), vol: Number(r[2].quoteVolume) };
+    const out = { src: "Binance", funding: Number(r[0].lastFundingRate) * 100,
+      oi: Number(r[1].openInterest) * Number(r[0].markPrice), vol: Number(r[2].quoteVolume),
+      last: Number(r[2].lastPrice), ch24: Number(r[2].priceChangePercent),
+      high24: Number(r[2].highPrice), low24: Number(r[2].lowPrice) };
+    const k = await Promise.allSettled([
+      getJson(base + "klines?symbol=" + PERP + "&interval=1h&limit=168"),
+      getJson(base + "klines?symbol=" + PERP + "&interval=1M&limit=1000")
+    ]);
+    if (k[0].status === "fulfilled" && k[0].value.length) {
+      out.high7 = Math.max.apply(null, k[0].value.map((x) => Number(x[2])));
+      out.low7 = Math.min.apply(null, k[0].value.map((x) => Number(x[3])));
+    }
+    if (k[1].status === "fulfilled" && k[1].value.length) {
+      out.ath = Math.max.apply(null, k[1].value.map((x) => Number(x[2])));
+      out.atl = Math.min.apply(null, k[1].value.map((x) => Number(x[3])));
+    }
+    return out;
   } catch (e) {
     const j = await getJson("https://api.bybit.com/v5/market/tickers?category=linear&symbol=" + PERP);
     const t = j.result && j.result.list && j.result.list[0];
     if (!t) throw e;
     return { src: "Bybit", funding: Number(t.fundingRate) * 100,
-             oi: Number(t.openInterestValue), vol: Number(t.turnover24h) };
+             oi: Number(t.openInterestValue), vol: Number(t.turnover24h),
+             last: Number(t.lastPrice), ch24: Number(t.price24hPcnt) * 100,
+             high24: Number(t.highPrice24h), low24: Number(t.lowPrice24h) };
   }
 }
 
 async function fetchDom() {
-  const j = await getJson(CG + "/global");
-  return j.data.market_cap_percentage.btc;
+  try {
+    const j = await getJson(cgUrl("/global"));
+    return j.data.market_cap_percentage.btc;
+  } catch (e) {
+    const p = await getJson("https://api.coinpaprika.com/v1/global");   // yedek
+    return p.bitcoin_dominance_percentage;
+  }
 }
 const FNG_TR = { "Extreme Fear": "Aşırı korku", "Fear": "Korku", "Neutral": "Nötr",
                  "Greed": "Açgözlülük", "Extreme Greed": "Aşırı açgözlülük" };
@@ -273,8 +314,27 @@ function tile(label, value, sub, cls, bar) {
 }
 const frac = (p, lo, hi) => (ok(p) && ok(lo) && ok(hi) && hi > lo) ? (p - lo) / (hi - lo) : null;
 
-function renderMarket(S, failed) {
-  const cg = S.cg || {}, ll = S.llama || {}, pp = S.perp || {};
+/* CoinGecko yoksa yedek kaynaklarla tamamla; hangi alan yedekten geldiyse not düş */
+function merge(cg, gt, pp) {
+  const m = Object.assign({}, cg || {});
+  const notes = {};
+  const fill = (k, v) => { if (!ok(m[k]) && ok(v)) { m[k] = v; return true; } return false; };
+  fill("price", gt && gt.price) || fill("price", pp && pp.last);
+  fill("ch24", pp && pp.ch24);
+  fill("high24", pp && pp.high24); fill("low24", pp && pp.low24);
+  fill("high7", pp && pp.high7); fill("low7", pp && pp.low7);
+  fill("mcap", gt && gt.mcap);
+  fill("fdv", gt && gt.fdv);
+  if (fill("vol", gt && gt.vol)) notes.vol = "yalnız BSC DEX";
+  if (fill("ath", pp && pp.ath)) { fill("atl", pp && pp.atl); notes.ath = "vadeli işlem geçmişi"; }
+  if (!ok(m.athCh) && ok(m.ath) && ok(m.price) && m.ath > 0) m.athCh = (m.price / m.ath - 1) * 100;
+  if (!ok(m.circPct) && ok(m.mcap) && ok(m.fdv) && m.fdv > 0) m.circPct = (m.mcap / m.fdv) * 100;
+  m.notes = notes;
+  return m;
+}
+
+function renderMarket(S, failed, errs) {
+  const cg = merge(S.cg, S.gt, S.perp), ll = S.llama || {}, pp = S.perp || {};
   document.getElementById("mPrice").textContent = px(cg.price);
   const ch = document.getElementById("mCh");
   ch.textContent = ok(cg.ch24) ? pct(cg.ch24, 2) + " (24s)" : "";
@@ -282,7 +342,7 @@ function renderMarket(S, failed) {
 
   const upd = document.getElementById("mUpd");
   upd.textContent = "";
-  upd.appendChild(el("span", "live-dot" + (failed >= 5 ? " off" : "")));
+  upd.appendChild(el("span", "live-dot" + (failed >= 4 ? " off" : "")));
   upd.appendChild(document.createTextNode(
     new Date().toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) +
     (failed ? " · " + failed + " kaynak yok" : "")));
@@ -295,7 +355,7 @@ function renderMarket(S, failed) {
                      frac(cg.price, cg.low7, cg.high7)));
   g.appendChild(tile("Piyasa değeri", compact(cg.mcap), null));
   g.appendChild(tile("FDV", compact(cg.fdv), ok(cg.circPct) ? "dolaşımda %" + cg.circPct.toFixed(0) : null));
-  g.appendChild(tile("Spot hacim (24s)", compact(cg.vol), null));
+  g.appendChild(tile("Spot hacim (24s)", compact(cg.vol), cg.notes.vol || null));
   g.appendChild(tile("Vadeli hacim (24s)", compact(pp.vol),
     (ok(pp.vol) && ok(cg.vol) && cg.vol > 0) ? "≈" + Math.round(pp.vol / cg.vol) + "x spot" + (pp.src ? " · " + pp.src : "") : (pp.src || null)));
   g.appendChild(tile("Vadeli açık pozisyon", compact(pp.oi),
@@ -308,16 +368,21 @@ function renderMarket(S, failed) {
     (ok(ll.borrowed) && ok(ll.tvl) && ll.tvl > 0) ? "kullanım %" + (ll.borrowed / ll.tvl * 100).toFixed(0) : null));
   g.appendChild(tile("FDV / TVL", (ok(cg.fdv) && ok(ll.tvl) && ll.tvl > 0) ? (cg.fdv / ll.tvl).toFixed(1) + "x" : "–", null));
   g.appendChild(tile("ATH / ATL", ok(cg.ath) ? px(cg.ath) + " / " + px(cg.atl) : "–",
-    ok(cg.athCh) ? "ATH'den " + pct(cg.athCh, 0) : null));
+    ok(cg.athCh) ? "ATH'den " + pct(cg.athCh, 0) + (cg.notes.ath ? " · " + cg.notes.ath : "") : null));
   g.appendChild(tile("BTC dominansı", ok(S.dom) ? "%" + S.dom.toFixed(1) : "–", null));
   g.appendChild(tile("Korku & Açgözlülük", S.fng ? String(S.fng.v) : "–", S.fng ? S.fng.c : null));
+
+  const d = document.getElementById("diag");
+  d.textContent = errs.length ? "Alınamayan kaynaklar: " + errs.join(" · ") : "";
 }
 
 async function loadMarket() {
-  const res = await Promise.allSettled([fetchCG(), fetchLlama(), fetchPerp(), fetchDom(), fetchFng()]);
+  const names = ["CoinGecko", "GeckoTerminal", "DefiLlama", "Vadeli işlem", "BTC dominansı", "Korku endeksi"];
+  const res = await Promise.allSettled([fetchCG(), fetchGT(), fetchLlama(), fetchPerp(), fetchDom(), fetchFng()]);
   const val = (i) => res[i].status === "fulfilled" ? res[i].value : null;
-  const failed = res.filter((r) => r.status === "rejected").length;
-  renderMarket({ cg: val(0), llama: val(1), perp: val(2), dom: val(3), fng: val(4) }, failed);
+  const errs = [];
+  res.forEach((r, i) => { if (r.status === "rejected") errs.push(names[i] + " (" + ((r.reason && r.reason.message) || r.reason) + ")"); });
+  renderMarket({ cg: val(0), gt: val(1), llama: val(2), perp: val(3), dom: val(4), fng: val(5) }, errs.length, errs);
 }
 
 /* ================= Zincir hareketleri ================= */
