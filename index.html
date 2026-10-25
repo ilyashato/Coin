@@ -43,6 +43,8 @@
   .bar { height: 5px; border-radius: 3px; background: var(--line); margin-top: 8px; overflow: hidden; }
   .bar > div { height: 100%; background: var(--xfer); }
 
+  .deltas { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 6px; font-size: 11px; color: var(--mute); }
+  .deltas span { white-space: nowrap; }
   .diag { color: var(--mute); font-size: 11px; margin-top: 8px; word-break: break-word; }
 
   /* Hareketler */
@@ -113,12 +115,12 @@ const INFO = {
   "24s aralık": "Son 24 saatteki en düşük ve en yüksek fiyat. Çubuk, güncel fiyatın bu aralığın neresinde olduğunu gösterir: sola yakınsa günün dibine, sağa yakınsa tepesine yakın demektir. Aralık dar ise fiyat sakin, geniş ise oynak seyrediyor demektir.",
   "7g aralık": "Aynı mantığın haftalık hali. Fiyatın haftalık aralığın altına inmesi zayıflık, üstüne çıkması güç işareti olarak izlenir. Tek başına karar verdirmez, hacim ve zincir hareketleriyle birlikte okunur.",
   "Piyasa değeri": "Dolaşımdaki arz × fiyat. Birkaç milyon dolarlık küçük piyasa değerlerinde fiyat, görece küçük paralarla da kolayca oynayabilir. Bu hem hızlı yükseliş hem sert düşüş riski demektir.",
-  "FDV": "Tüm arz, yani kilitli token'lar da dolaşıma girseydi oluşacak piyasa değeri. FDV, piyasa değerinden çok büyükse ileride açılacak kilitli token'lardan gelebilecek satış baskısı (arz baskısı) söz konusudur. Altındaki oran, arzın ne kadarının dolaşımda olduğunu gösterir.",
+  "FDV": "Tüm arz, yani kilitli token'lar da dolaşıma girseydi oluşacak piyasa değeri. FDV, piyasa değerinden çok büyükse ileride açılacak kilitli token'lardan gelebilecek satış baskısı (arz baskısı) söz konusudur. Altındaki yüzde, arzın ne kadarının dolaşımda olduğunu; 1G, 7G ve 30G satırı değişimi gösterir. Toplam arz değişmediği sürece FDV değişimi fiyat değişimine eşittir.",
   "Spot hacim (24s)": "Son 24 saatte gerçekleşen alım-satım tutarı. Piyasa değerine göre çok düşükse likidite zayıftır: büyük bir emir fiyatı sert oynatır ve pozisyondan çıkmak zorlaşır.",
   "Vadeli hacim (24s)": "Vadeli (perp) piyasadaki işlem hacmi. Spot hacmin kat kat üstündeyse fiyatı gerçek alıcı-satıcıdan çok kaldıraçlı, kısa vadeli işlemlerin yönlendirdiği düşünülür. Böyle piyasalarda hareketler daha sert olabilir.",
   "Vadeli açık pozisyon": "Açık duran kaldıraçlı pozisyonların toplam değeri. Piyasa değerine göre çok büyükse küçük bir fiyat hareketi bile zincirleme tasfiyelere (likidasyon) yol açıp hareketi büyütebilir.",
   "Funding (son oran)": "Pozitifse long açanlar short açanlara ödüyor: çoğunluk yükselişe oynuyor, pozisyonlar bir tarafta kalabalık. Negatifse tersi. Fiyat düşerken funding pozitif kalıyorsa long'ların sıkıştığı bir tablo olabilir. Ödeme aralığı borsaya göre 4 veya 8 saattir.",
-  "TVL": "Protokole kilitlenen toplam değer. Kredi protokolünde kullanıcı güveninin ve kullanımın temel göstergesidir. Artıyorsa para giriyor, düşüyorsa çıkıyor demektir. Parantezdeki 30 günlük değişim yönü gösterir. Fiyat düşerken TVL de düşüyorsa zayıflık birbirini besliyor olabilir.",
+  "TVL": "Protokole kilitlenen toplam değer. Kredi protokolünde kullanıcı güveninin ve kullanımın temel göstergesidir. Artıyorsa para giriyor, düşüyorsa çıkıyor demektir. Altındaki 1G, 7G ve 30G satırı son 1, 7 ve 30 gündeki değişimi gösterir; yeşil artış, kırmızı azalış demektir. Fiyat düşerken TVL de düşüyorsa zayıflık birbirini besliyor olabilir.",
   "Aktif borç": "Protokolden şu an borç alınmış tutar. Kullanım oranı borç / TVL'dir. Yüksek oran borç talebinin ve faiz gelirinin güçlü olduğunu ama likiditenin sıkışabileceğini, düşük oran ise protokole talebin zayıf olduğunu gösterir.",
   "FDV / TVL": "Protokolün kilitli değerine göre kaç kat fiyatlandığı. Düşükse görece ucuz, yüksekse görece pahalı fiyatlandığı yorumu yapılır. Tek başına anlamlı değildir, benzer kredi protokolleriyle kıyaslanmalıdır.",
   "ATH / ATL": "Tüm zamanların en yüksek ve en düşük fiyatı. ATH'den uzaklık, zirveden ne kadar değer kaybedildiğini gösterir. ATL'ye yakınlık dip bölgesi anlamına gelir ama dip olacağının garantisi değildir.",
@@ -183,6 +185,7 @@ async function fetchCG() {
   return {
     price: p,
     ch24: m.price_change_percentage_24h,
+    ch7: m.price_change_percentage_7d, ch30: m.price_change_percentage_30d,
     high24: m.high_24h && m.high_24h.usd, low24: m.low_24h && m.low_24h.usd,
     high7: sp.length ? Math.max.apply(null, sp) : null,
     low7: sp.length ? Math.min.apply(null, sp) : null,
@@ -224,7 +227,12 @@ async function fetchLlama() {
     for (const k in cur) if (/-borrowed$/i.test(k)) { s += cur[k]; f = true; }
     if (f) borrowed = s;
   }
-  return { tvl: last, tvl30: (ok(last) && prev) ? (last / prev - 1) * 100 : null, borrowed: borrowed };
+  const chg = (back) => {
+    if (!ok(last) || t.length <= back) return null;
+    const p = t[t.length - 1 - back].totalLiquidityUSD;
+    return p > 0 ? (last / p - 1) * 100 : null;
+  };
+  return { tvl: last, d1: chg(1), d7: chg(7), tvl30: chg(30), borrowed: borrowed };
 }
 
 /* Vadeli işlem: funding, açık pozisyon, hacim + fiyat/aralık/ATH yedeği */
@@ -242,7 +250,8 @@ async function fetchPerp() {
       high24: Number(r[2].highPrice), low24: Number(r[2].lowPrice) };
     const k = await Promise.allSettled([
       getJson(base + "klines?symbol=" + PERP + "&interval=1h&limit=168"),
-      getJson(base + "klines?symbol=" + PERP + "&interval=1M&limit=1000")
+      getJson(base + "klines?symbol=" + PERP + "&interval=1M&limit=1000"),
+      getJson(base + "klines?symbol=" + PERP + "&interval=1d&limit=31")
     ]);
     if (k[0].status === "fulfilled" && k[0].value.length) {
       out.high7 = Math.max.apply(null, k[0].value.map((x) => Number(x[2])));
@@ -251,6 +260,14 @@ async function fetchPerp() {
     if (k[1].status === "fulfilled" && k[1].value.length) {
       out.ath = Math.max.apply(null, k[1].value.map((x) => Number(x[2])));
       out.atl = Math.min.apply(null, k[1].value.map((x) => Number(x[3])));
+    }
+    if (k[0].status === "fulfilled" && k[0].value.length >= 168 && ok(out.last)) {
+      const o = Number(k[0].value[0][1]);
+      if (o > 0) out.ch7 = (out.last / o - 1) * 100;
+    }
+    if (k[2] && k[2].status === "fulfilled" && k[2].value.length >= 31 && ok(out.last)) {
+      const o = Number(k[2].value[0][1]);
+      if (o > 0) out.ch30 = (out.last / o - 1) * 100;
     }
     return out;
   } catch (e) {
@@ -282,7 +299,7 @@ async function fetchFng() {
 }
 
 /* Kutu: etiket + i düğmesi, değer, alt satır, isteğe bağlı çubuk, açılır not */
-function tile(label, value, sub, cls, bar) {
+function tile(label, value, sub, cls, bar, deltas) {
   const t = el("div", "tile");
   const k = el("div", "k");
   k.appendChild(el("span", null, label));
@@ -304,6 +321,14 @@ function tile(label, value, sub, cls, bar) {
   t.appendChild(k);
   t.appendChild(el("div", "v" + (cls ? " " + cls : ""), value));
   if (sub) t.appendChild(el("div", "s", sub));
+  if (deltas) {
+    const dr = el("div", "deltas");
+    for (const x of deltas) {
+      const v = x[1];
+      dr.appendChild(el("span", ok(v) ? (v > 0.05 ? "up" : v < -0.05 ? "down" : "") : "", x[0] + " " + (ok(v) ? pct(v) : "–")));
+    }
+    t.appendChild(dr);
+  }
   if (ok(bar)) {
     const bb = el("div", "bar"), f = el("div");
     f.style.width = Math.max(0, Math.min(100, bar * 100)) + "%";
@@ -321,6 +346,7 @@ function merge(cg, gt, pp) {
   const fill = (k, v) => { if (!ok(m[k]) && ok(v)) { m[k] = v; return true; } return false; };
   fill("price", gt && gt.price) || fill("price", pp && pp.last);
   fill("ch24", pp && pp.ch24);
+  fill("ch7", pp && pp.ch7); fill("ch30", pp && pp.ch30);
   fill("high24", pp && pp.high24); fill("low24", pp && pp.low24);
   fill("high7", pp && pp.high7); fill("low7", pp && pp.low7);
   fill("mcap", gt && gt.mcap);
@@ -354,7 +380,8 @@ function renderMarket(S, failed, errs) {
   g.appendChild(tile("7g aralık", ok(cg.low7) ? px(cg.low7) + " – " + px(cg.high7) : "–", null, null,
                      frac(cg.price, cg.low7, cg.high7)));
   g.appendChild(tile("Piyasa değeri", compact(cg.mcap), null));
-  g.appendChild(tile("FDV", compact(cg.fdv), ok(cg.circPct) ? "dolaşımda %" + cg.circPct.toFixed(0) : null));
+  g.appendChild(tile("FDV", compact(cg.fdv), ok(cg.circPct) ? "dolaşımda %" + cg.circPct.toFixed(0) : null, null, null,
+    [["1G", cg.ch24], ["7G", cg.ch7], ["30G", cg.ch30]]));
   g.appendChild(tile("Spot hacim (24s)", compact(cg.vol), cg.notes.vol || null));
   g.appendChild(tile("Vadeli hacim (24s)", compact(pp.vol),
     (ok(pp.vol) && ok(cg.vol) && cg.vol > 0) ? "≈" + Math.round(pp.vol / cg.vol) + "x spot" + (pp.src ? " · " + pp.src : "") : (pp.src || null)));
@@ -363,7 +390,8 @@ function renderMarket(S, failed, errs) {
   const fcls = ok(pp.funding) ? (pp.funding > 0 ? "warn" : pp.funding < 0 ? "up" : "") : "";
   g.appendChild(tile("Funding (son oran)", ok(pp.funding) ? pct(pp.funding, 3) : "–",
     ok(pp.funding) ? (pp.funding > 0 ? "uzunlar ödüyor" : pp.funding < 0 ? "kısalar ödüyor" : "nötr") : null, fcls));
-  g.appendChild(tile("TVL", compact(ll.tvl), ok(ll.tvl30) ? pct(ll.tvl30) + " (30g)" : null));
+  g.appendChild(tile("TVL", compact(ll.tvl), null, null, null,
+    [["1G", ll.d1], ["7G", ll.d7], ["30G", ll.tvl30]]));
   g.appendChild(tile("Aktif borç", compact(ll.borrowed),
     (ok(ll.borrowed) && ok(ll.tvl) && ll.tvl > 0) ? "kullanım %" + (ll.borrowed / ll.tvl * 100).toFixed(0) : null));
   g.appendChild(tile("FDV / TVL", (ok(cg.fdv) && ok(ll.tvl) && ll.tvl > 0) ? (cg.fdv / ll.tvl).toFixed(1) + "x" : "–", null));
