@@ -650,7 +650,7 @@ function lineChart(title, pts, color, opts) {
   opts = opts || {}; const fmt = opts.fmt || fmtBig, group = opts.group || allCharts;
   const w = el("div", "chart");
   const first = pts[0].v, last = pts[pts.length - 1].v;
-  const t = el("div", "t"), tl = el("b", null, ""), tr = el("span", null, ""); t.appendChild(tl); t.appendChild(tr); w.appendChild(t);
+  const t = el("div", "t"), tl = el("b", null, ""), tr = el("span", null, ""); t.appendChild(tl); t.appendChild(tr); const nt = addNote(t, title); t.style.alignItems = "center"; t.style.gap = "8px"; tl.style.flex = "1"; w.appendChild(t); if (nt) { nt.style.margin = "0 0 6px"; nt.style.paddingTop = "0"; nt.style.borderTop = "0"; w.appendChild(nt); }
   const W = 600, H = 120, mn = Math.min(...pts.map((p) => p.v)), mx = Math.max(...pts.map((p) => p.v)), t0 = pts[0].t, t1 = pts[pts.length - 1].t;
   const X = (x) => (t1 === t0 ? 0 : (x - t0) / (t1 - t0) * W), Y = (v) => H - 6 - (mx === mn ? 0.5 : (v - mn) / (mx - mn)) * (H - 12);
   const NS = "http://www.w3.org/2000/svg", svg = document.createElementNS(NS, "svg");
@@ -921,11 +921,48 @@ async function loadPos() {
   document.getElementById("posNote").textContent = bad.length ? "Alınamayan veriler: " + bad.join(", ") + " (Binance bu sembol için sunmuyor olabilir)." : "Kaynak: Binance vadeli istatistikleri, saatlik (son ~3 hafta).";
 }
 
+
+/* ================= Bölüm ve grafik açıklamaları ("i" düğmeleri) ================= */
+const INFO2 = {
+  "Açık pozisyon (OI)": "Vadeli piyasada o an açık duran toplam pozisyon değeri. Fiyatla birlikte artıyorsa yeni para trendi destekliyor, hareket güçlü. Fiyat düşerken artıyorsa yeni short'lar açılıyor, düşüş baskısı sürer. Düşüyorsa pozisyonlar kapanıyor, hareket yorulur. Ani sıçramalardan sonra tasfiyeli sert hareketler gelebilir.",
+  "Fonlama oranı": "Long ve short taraflar arasında her 8 saatte bir yapılan ödeme. Pozitifse long'lar short'lara öder, yani long kalabalık. %0,03 üstü aşırı ısınmadır, düzeltme riski artar. Negatifse short'lar öder; %-0,01 altı short squeeze (yukarı sıkışma) zemini hazırlar. Sıfıra yakınsa denge vardır.",
+  "Kalabalık L/S (hesap)": "Long hesap sayısının short hesap sayısına oranı; çoğunluğu küçük yatırımcılardır. 1 üstü long ağırlıklı demektir. 1,5 üstü aşırı kalabalık long: ters yönde tasfiye riski. 0,8 altı kalabalık short: yukarı sıkışma ihtimali. Kalabalık sık yanıldığı için çoğu zaman ters sinyal olarak okunur.",
+  "Büyük oyuncu L/S (pozisyon)": "Binance'in en büyük hesaplarının pozisyon büyüklüğüne göre long/short oranı. 1,2 üstü büyükler long, 0,8 altı short. Kalabalıkla ters yöndeyse daha anlamlıdır: büyükler long, kalabalık short ise yukarı ağırlık artar; tersi aşağı ağırlık.",
+  "Taker alış/satış": "Piyasa emriyle alanların hacminin, piyasa emriyle satanların hacmine oranı. 1 üstü alıcılar agresif demektir; 1,1 üstü belirgin alım baskısı, 0,9 altı satış baskısı. Fiyat yükselirken oran düşüyorsa yükseliş yoruluyor olabilir.",
+  "TVL": "EVAA protokolüne yatırılan toplam varlık. Artış güven ve likidite girişi, hızlı düşüş çıkış demektir. Fiyat düşerken TVL sabit kalıyorsa kullanıcı sadakati güçlü; ikisi birlikte düşüyorsa zayıflık işaretidir.",
+  "FDV": "Tüm arz dolaşımdaymış gibi hesaplanan toplam değer (fiyat × toplam arz). Fiyatla aynı yönde hareket eder. TVL'ye göre çok yüksekse (FDV/TVL) protokol pahalı fiyatlanıyor demektir.",
+  "Fiyat": "EVAAUSDT günlük kapanış fiyatı. TVL ile birlikte oku: fiyat düşerken TVL artıyorsa temel güçlü, fiyat daha ucuz kalmış olabilir. Fiyat artarken TVL düşüyorsa yükseliş daha çok spekülatiftir.",
+  "sNabiz": "Aşağıdaki tüm sinyallerin ortalaması. Yeşil nokta yukarı, kırmızı nokta aşağı yönlü işaret demektir; gri nötrdür. En çok ağırlığı olan sinyaller üstte durur. Tek başına karar aracı değil, hangi tarafın baskın olduğunu görmek içindir.",
+  "sLiq": "Fiyatın henüz uğramadığı seviyelerde birikmiş tahmini likidasyonlar. Çubuk uzunsa o fiyatta çok pozisyon tasfiye olur ve büyük oyuncular fiyatı oraya çekmek isteyebilir (mıknatıs etkisi). Yukarıda yoğunluk fazlaysa yukarı çekim, aşağıda fazlaysa aşağı çekim ihtimali artar. Yüzde şu anki fiyata uzaklıktır. Üstteki zaman düğmeleri geriye bakış süresini değiştirir.",
+  "sDuvar": "Emir defterinde bekleyen büyük emirler. Satış duvarı direnç gibi çalışır, yükselişi yavaşlatır. Alış duvarı destek gibi çalışır, düşüşü yavaşlatır. Duvar yenilirse fiyat hızlanır. Duvarlar aniden iptal edilebilir, bu yüzden kesin sayılmaz. Alıcı/satıcı oranı 1,3 üstüyse alıcılar, 0,77 altıysa satıcılar baskındır.",
+  "sCanli": "Anlık gerçekleşen zorla kapatmalar. Long tasfiyesi long'ların zarar edip kapatıldığı, yani satış baskısıdır. Short tasfiyesi short'ların kapatılmaya zorlandığı, yani alış baskısıdır. Peş peşe büyük tasfiyeler çoğunlukla hareketin hızlandığı ya da tükendiği yerde görülür.",
+  "sPoz": "Vadeli piyasada kimin ne yaptığını gösterir. Grafikleri birlikte oku. Örnek: açık pozisyon artıyor, fonlama yüksek, kalabalık long ise piyasa aşırı ısınıyor. Açık pozisyon düşüyor, fonlama negatif, kalabalık short ise sıkışma ihtimali var.",
+  "sSeyir": "Protokolün temel sağlığı ile fiyatın ilişkisi. TVL ve FDV'nin fiyatla aynı yönde mi yoksa ayrışarak mı gittiğine bak. Ayrışma genellikle bir sonraki hareketin ipucudur.",
+  "sZincir": "Zincir üzerindeki büyük alım, satım ve transferler. Büyük bir cüzdan borsaya EVAA gönderiyorsa satış hazırlığı, borsadan çekiyorsa birikim işareti olabilir. Etiketli cüzdanlar izleme listesindedir."
+};
+function infoBtn(key, onToggle) {
+  const b = el("button", "i", "i"); b.type = "button"; b.title = "Nasıl yorumlanır?"; b.onclick = onToggle; return b;
+}
+function addNote(row, key) {
+  const text = INFO2[key]; if (!text) return null;
+  const note = el("div", "note", text); note.style.display = openInfo.has(key) ? "block" : "none";
+  const b = infoBtn(key, () => { const o = note.style.display === "none"; note.style.display = o ? "block" : "none"; if (o) openInfo.add(key); else openInfo.delete(key); });
+  row.appendChild(b); return note;
+}
+function wireSectionInfo() {
+  Object.keys(INFO2).filter((k) => /^s[A-Z]/.test(k)).forEach((id) => {
+    const h = document.getElementById(id); if (!h) return;
+    h.style.display = "flex"; h.style.alignItems = "center"; h.style.gap = "8px";
+    const note = addNote(h, id); if (note) { note.style.margin = "0 0 8px"; note.style.paddingTop = "0"; note.style.borderTop = "0"; h.parentNode.insertBefore(note, h.nextSibling); }
+  });
+}
+
 /* ================= Başlat ================= */
 renderStats();
 renderChips();
 loadMarket();
 loadFeed();
+wireSectionInfo();
 startLiqFeed();
 renderPosChips();
 loadPos();
