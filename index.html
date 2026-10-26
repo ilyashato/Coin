@@ -603,36 +603,60 @@ function renderChChips() {
     box.appendChild(c);
   });
 }
-function fmtBig(v) { return v >= 1e9 ? "$" + (v / 1e9).toFixed(2) + " Mr" : v >= 1e6 ? "$" + (v / 1e6).toFixed(2) + " Mn" : "$" + Math.round(v).toLocaleString("tr-TR"); }
+function fmtBig(v) { return v >= 1e9 ? "$" + (v / 1e9).toFixed(2) + " Mr" : v >= 1e6 ? "$" + (v / 1e6).toFixed(2) + " Mn" : v < 100 ? "$" + v.toFixed(3) : "$" + Math.round(v).toLocaleString("tr-TR"); }
+const fmtD = (x) => new Date(x).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
+let allCharts = [];
+function nearest(pts, t) { let lo = 0, hi = pts.length - 1; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (pts[m].t <= t) lo = m; else hi = m; } return Math.abs(pts[lo].t - t) <= Math.abs(pts[hi].t - t) ? pts[lo] : pts[hi]; }
 function lineChart(title, pts, color) {
   const w = el("div", "chart");
-  const first = pts[0].v, last = pts[pts.length - 1].v, ch = (last / first - 1) * 100;
-  const t = el("div", "t"); t.appendChild(el("b", null, title + "  " + fmtBig(last)));
-  const cs = el("span", null, (ch >= 0 ? "+" : "") + ch.toFixed(1) + "%"); cs.style.color = ch >= 0 ? "var(--buy)" : "var(--sell)"; t.appendChild(cs);
-  w.appendChild(t);
+  const first = pts[0].v, last = pts[pts.length - 1].v;
+  const t = el("div", "t"), tl = el("b", null, ""), tr = el("span", null, ""); t.appendChild(tl); t.appendChild(tr); w.appendChild(t);
   const W = 600, H = 120, mn = Math.min(...pts.map((p) => p.v)), mx = Math.max(...pts.map((p) => p.v)), t0 = pts[0].t, t1 = pts[pts.length - 1].t;
-  const X = (t) => (t1 === t0 ? 0 : (t - t0) / (t1 - t0) * W), Y = (v) => H - 6 - (mx === mn ? 0.5 : (v - mn) / (mx - mn)) * (H - 12);
+  const X = (x) => (t1 === t0 ? 0 : (x - t0) / (t1 - t0) * W), Y = (v) => H - 6 - (mx === mn ? 0.5 : (v - mn) / (mx - mn)) * (H - 12);
   const NS = "http://www.w3.org/2000/svg", svg = document.createElementNS(NS, "svg");
   svg.setAttribute("viewBox", "0 0 " + W + " " + H); svg.setAttribute("preserveAspectRatio", "none");
   const path = document.createElementNS(NS, "path");
   path.setAttribute("d", pts.map((p, i) => (i ? "L" : "M") + X(p.t).toFixed(1) + " " + Y(p.v).toFixed(1)).join(" "));
   path.setAttribute("fill", "none"); path.setAttribute("stroke", color); path.setAttribute("stroke-width", "2"); path.setAttribute("vector-effect", "non-scaling-stroke");
-  svg.appendChild(path); w.appendChild(svg);
-  const ax = el("div", "ax"); const d = (x) => new Date(x).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
-  ax.appendChild(el("span", null, d(t0) + " · min " + fmtBig(mn))); ax.appendChild(el("span", null, "max " + fmtBig(mx) + " · " + d(t1))); w.appendChild(ax);
+  const cur = document.createElementNS(NS, "line"); cur.setAttribute("y1", 0); cur.setAttribute("y2", H); cur.setAttribute("stroke", "#8a97a6"); cur.setAttribute("stroke-width", "1"); cur.setAttribute("vector-effect", "non-scaling-stroke"); cur.style.display = "none";
+  svg.appendChild(path); svg.appendChild(cur); w.appendChild(svg);
+  const ax = el("div", "ax");
+  ax.appendChild(el("span", null, fmtD(t0) + " · min " + fmtBig(mn))); ax.appendChild(el("span", null, "max " + fmtBig(mx) + " · " + fmtD(t1))); w.appendChild(ax);
+  const show = (pt) => {
+    const v = pt ? pt.v : last, ch = (v / first - 1) * 100;
+    tl.textContent = title + "  " + fmtBig(v) + (pt ? "  · " + fmtD(pt.t) : "");
+    tr.textContent = (ch >= 0 ? "+" : "") + ch.toFixed(1) + "%"; tr.style.color = ch >= 0 ? "var(--buy)" : "var(--sell)";
+    if (pt) { cur.setAttribute("x1", X(pt.t)); cur.setAttribute("x2", X(pt.t)); cur.style.display = ""; } else cur.style.display = "none";
+  };
+  show(null);
+  allCharts.push({ svg, pts, t0, t1, show });
   return w;
 }
+function wireCharts() {
+  const move = (e, c) => {
+    const r = c.svg.getBoundingClientRect(), f = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), tt = c.t0 + f * (c.t1 - c.t0);
+    allCharts.forEach((o) => o.show(nearest(o.pts, tt)));
+  };
+  allCharts.forEach((c) => {
+    c.svg.style.touchAction = "pan-y";
+    c.svg.addEventListener("pointerdown", (e) => move(e, c));
+    c.svg.addEventListener("pointermove", (e) => move(e, c));
+    c.svg.addEventListener("pointerleave", () => allCharts.forEach((o) => o.show(null)));
+    c.svg.addEventListener("pointerup", () => setTimeout(() => allCharts.forEach((o) => o.show(null)), 2500));
+  });
+}
 function drawCharts() {
-  const box = document.getElementById("chBox"); box.textContent = "";
+  const box = document.getElementById("chBox"); box.textContent = ""; allCharts = [];
   if (!chData) return;
   const days = CH_RANGES[chIdx][1], cut = days ? Date.now() - days * 864e5 : 0;
   let any = false;
-  [["TVL", chData.tvl, "#4c9aff"], ["FDV", chData.fdv, "#f5b13d"]].forEach(([n, arr, col]) => {
+  [["TVL", chData.tvl, "#4c9aff"], ["FDV", chData.fdv, "#f5b13d"], ["Fiyat", chData.price, "#2fbf71"]].forEach(([n, arr, col]) => {
     const pts = (arr || []).filter((p) => p.t >= cut);
     if (pts.length > 1) { box.appendChild(lineChart(n, pts, col)); any = true; }
     else box.appendChild(el("div", "hd", n + ": veri yok"));
   });
   if (!any) box.appendChild(el("div", "hd", "Grafik verisi alınamadı"));
+  else { box.appendChild(el("div", "hd", "Parmağını grafiğin üstünde sürükle: tarih, TVL, FDV ve fiyat aynı anda görünür.")); wireCharts(); }
 }
 async function loadCharts() {
   const res = await Promise.allSettled([
@@ -640,14 +664,14 @@ async function loadCharts() {
     getJson("https://api.geckoterminal.com/api/v2/networks/bsc/tokens/" + BSC_TOKEN),
     getJson("https://fapi.binance.com/fapi/v1/klines?symbol=" + PERP + "&interval=1d&limit=500")
   ]);
-  const d = { tvl: [], fdv: [] };
+  const d = { tvl: [], fdv: [], price: [] };
   if (res[0].status === "fulfilled") d.tvl = (res[0].value.tvl || []).map((x) => ({ t: x.date * 1000, v: x.totalLiquidityUSD })).filter((x) => x.v > 0);
   if (res[1].status === "fulfilled" && res[2].status === "fulfilled") {
     const a = res[1].value.data.attributes, price = Number(a.price_usd), fdv = Number(a.fdv_usd);
     if (price > 0 && fdv > 0) {
       const sup = fdv / price;
-      d.fdv = res[2].value.map((k) => ({ t: +k[0], v: +k[4] * sup }));
-      d.fdv.push({ t: Date.now(), v: fdv });
+      d.price = res[2].value.map((k) => ({ t: +k[0], v: +k[4] })); d.price.push({ t: Date.now(), v: price });
+      d.fdv = d.price.map((x) => ({ t: x.t, v: x.v * sup }));
     }
   }
   chData = d; drawCharts();
