@@ -37,11 +37,19 @@ async function rpc(method, params) {
 }
 
 async function getPrice() {
-  const r = await fetch(`https://api.geckoterminal.com/api/v2/simple/networks/bsc/token_price/${TOKEN}`);
-  const j = await r.json();
-  const p = j?.data?.attributes?.token_prices?.[TOKEN];
-  if (!p) throw new Error("Fiyat alınamadı");
-  return Number(p);
+  const tries = [
+    async () => {
+      const j = await (await fetch(`https://api.geckoterminal.com/api/v2/simple/networks/bsc/token_price/${TOKEN}`)).json();
+      return j?.data?.attributes?.token_prices?.[TOKEN];
+    },
+    async () => (await (await fetch("https://fapi.binance.com/fapi/v1/ticker/price?symbol=EVAAUSDT")).json())?.price,
+    async () => (await (await fetch("https://api.bybit.com/v5/market/tickers?category=linear&symbol=EVAAUSDT")).json())?.result?.list?.[0]?.lastPrice,
+    async () => (await (await fetch("https://api.coingecko.com/api/v3/simple/price?ids=evaa-protocol&vs_currencies=usd")).json())?.["evaa-protocol"]?.usd,
+  ];
+  for (const t of tries) {
+    try { const p = Number(await t()); if (p > 0) return p; } catch {}
+  }
+  throw new Error("Fiyat alınamadı (tüm kaynaklar)");
 }
 
 async function blockTime(hexBlock, cache) {
@@ -78,19 +86,38 @@ async function poolTrades() {
 }
 
 // 2) Cüzdandan cüzdana transferler (RPC Transfer olayları)
+// Dayanıklı tarama: aralık RPC limitini aşarsa küçültür, çok geride kalındıysa atlar,
+// hata olsa da o ana kadarki ilerlemeyi kaydeder (takılı kalmaz).
+const MAX_BACK = Number(process.env.MAX_BACK || 30000);  // en fazla bu kadar blok geriye bak
+const MAX_CALLS = Number(process.env.MAX_CALLS || 40);   // bir çalışmada en fazla getLogs çağrısı
+
 async function transfers(state, price) {
   const dec = Number(BigInt(await rpc("eth_call", [{ to: TOKEN, data: "0x313ce567" }, "latest"])));
   const latest = Number(BigInt(await rpc("eth_blockNumber", [])));
-  const from = state.lastBlock ? state.lastBlock + 1 : latest - 2000;
+  let from = state.lastBlock ? state.lastBlock + 1 : latest - 2000;
+  if (latest - from > MAX_BACK) {
+    console.log(`Çok geride (${latest - from} blok), ${latest - MAX_BACK} bloğundan devam ediliyor`);
+    from = latest - MAX_BACK;
+  }
   const out = [];
   const cache = {};
+  let chunk = Number(process.env.CHUNK || 5000);
+  let s = from, calls = 0, done = from - 1, error = null;
 
-  for (let s = from; s <= latest; s += CHUNK) {
-    const e = Math.min(s + CHUNK - 1, latest);
-    const logs = await rpc("eth_getLogs", [{
-      address: TOKEN, topics: [TRANSFER],
-      fromBlock: "0x" + s.toString(16), toBlock: "0x" + e.toString(16),
-    }]);
+  while (s <= latest && calls < MAX_CALLS) {
+    const e = Math.min(s + chunk - 1, latest);
+    let logs;
+    calls++;
+    try {
+      logs = await rpc("eth_getLogs", [{
+        address: TOKEN, topics: [TRANSFER],
+        fromBlock: "0x" + s.toString(16), toBlock: "0x" + e.toString(16),
+      }]);
+    } catch (err) {
+      if (chunk > 250) { chunk = Math.max(250, Math.floor(chunk / 2)); continue; }  // aralığı küçült
+      error = err.message;
+      break;
+    }
     for (const l of logs) {
       if (l.topics.length !== 3) continue;
       const f = topicToAddr(l.topics[1]);
@@ -113,8 +140,10 @@ async function transfers(state, price) {
         tags,
       });
     }
+    done = e;
+    s = e + 1;
   }
-  return { events: out, from, latest };
+  return { events: out, from, latest, done, calls, error };
 }
 
 async function main() {
@@ -131,12 +160,13 @@ async function main() {
 
   try { push(await poolTrades()); } catch (e) { console.error("Havuz:", e.message); }
 
+  if (!price) console.log("Fiyat yok, transfer taraması atlandı");
   if (price) {
     try {
       const r = await transfers(state, price);
       push(r.events);
-      state.lastBlock = r.latest;
-      console.log(`Transfer taraması: ${r.from}-${r.latest}`);
+      if (r.done >= r.from) state.lastBlock = r.done;
+      console.log(`Transfer taraması: ${r.from}-${r.done} (hedef ${r.latest}, ${r.calls} çağrı)` + (r.error ? " · durdu: " + r.error : ""));
     } catch (e) { console.error("Transfer:", e.message); }
   }
 
