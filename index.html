@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="EVAA">
 <title>EVAA Canlı Panel</title>
-<!-- sürüm 16 -->
+<!-- sürüm 23 -->
 <style>
   :root {
     --bg: #0b0f14; --card: #131a22; --line: #1f2a36; --text: #e8edf2; --mute: #8a97a6;
@@ -101,7 +101,7 @@
   .verdict .v { font-size:18px; font-weight:700; } .gauge { height:8px; border-radius:4px; background: linear-gradient(90deg, var(--sell), var(--line) 50%, var(--buy)); position:relative; margin:4px 0 8px; }
   .gauge i { position:absolute; top:-3px; width:4px; height:14px; border-radius:2px; background:var(--text); }
   .sw { position: relative; } .lvl { position: absolute; left: 2px; font-size: 10px; background: rgba(11,15,20,.7); padding: 0 4px; border-radius: 4px; pointer-events: none; }
-  .zone { font-size: 12px; font-weight: 650; margin: 0 0 4px; min-height: 16px; }
+  .zone { font-size: 12px; font-weight: 650; margin: 0 0 4px; }
 </style>
 </head>
 <body>
@@ -655,7 +655,8 @@ function lineChart(title, pts, color, opts) {
   const w = el("div", "chart");
   const first = pts[0].v, last = pts[pts.length - 1].v;
   const t = el("div", "t"), tl = el("b", null, ""), tr = el("span", null, ""); t.appendChild(tl); t.appendChild(tr); const nt = addNote(t, title); t.style.alignItems = "center"; t.style.gap = "8px"; tl.style.flex = "1"; w.appendChild(t); if (nt) { nt.style.margin = "0 0 6px"; nt.style.paddingTop = "0"; nt.style.borderTop = "0"; w.appendChild(nt); }
-  const W = 600, H = 120, mn = Math.min(...pts.map((p) => p.v)), mx = Math.max(...pts.map((p) => p.v)), t0 = pts[0].t, t1 = pts[pts.length - 1].t;
+  const s2 = opts.s2 && opts.s2.pts.length > 1 ? opts.s2 : null, allV = pts.map((p) => p.v).concat(s2 ? s2.pts.map((p) => p.v) : []);
+  const W = 600, H = 120, mn = Math.min(...allV), mx = Math.max(...allV), t0 = pts[0].t, t1 = pts[pts.length - 1].t;
   const span = (mx - mn) || Math.abs(mx) * 0.1 || 1, lv = (opts.levels || []).filter((l) => l[0] >= mn - span * 0.5 && l[0] <= mx + span * 0.5);
   const lo = Math.min(mn, ...lv.map((l) => l[0])), hi = Math.max(mx, ...lv.map((l) => l[0]));
   const X = (x) => (t1 === t0 ? 0 : (x - t0) / (t1 - t0) * W), Y = (v) => H - 6 - (hi === lo ? 0.5 : (v - lo) / (hi - lo)) * (H - 12);
@@ -671,14 +672,22 @@ function lineChart(title, pts, color, opts) {
     ln.setAttribute("stroke", l[2]); ln.setAttribute("stroke-width", "1"); ln.setAttribute("stroke-dasharray", "5 4"); ln.setAttribute("vector-effect", "non-scaling-stroke"); ln.setAttribute("opacity", "0.8"); svg.appendChild(ln);
     const lb = el("span", "lvl", l[1]); lb.style.top = "calc(" + (Y(l[0]) / H * 100).toFixed(1) + "% - 13px)"; lb.style.color = l[2]; sw.appendChild(lb);
   });
+  if (s2) { const p2 = document.createElementNS(NS, "path");
+    p2.setAttribute("d", s2.pts.filter((p) => p.t >= t0).map((p, i) => (i ? "L" : "M") + X(p.t).toFixed(1) + " " + Y(p.v).toFixed(1)).join(" "));
+    p2.setAttribute("fill", "none"); p2.setAttribute("stroke", s2.color); p2.setAttribute("stroke-width", "2"); p2.setAttribute("vector-effect", "non-scaling-stroke"); svg.appendChild(p2); }
   svg.appendChild(path); svg.appendChild(cur); sw.appendChild(svg); w.appendChild(sw);
   const ax = el("div", "ax");
   ax.appendChild(el("span", null, fmtD(t0) + " · min " + fmt(mn))); ax.appendChild(el("span", null, "max " + fmt(mx) + " · " + fmtD(t1))); w.appendChild(ax);
   const show = (pt) => {
     const v = pt ? pt.v : last, ch = (v / first - 1) * 100;
-    tl.textContent = title + "  " + fmt(v) + (pt ? "  · " + fmtD(pt.t) : "");
+    const pt2 = s2 ? (pt ? nearest(s2.pts, pt.t) : s2.pts[s2.pts.length - 1]) : null;
+    if (s2) {
+      tl.textContent = "";
+      const a = el("span", null, opts.name1 + " " + fmt(v)); a.style.color = color; const b = el("span", null, "  ·  " + s2.name + " " + fmt(pt2.v)); b.style.color = s2.color;
+      tl.appendChild(a); tl.appendChild(b); if (pt) tl.appendChild(el("span", null, "  · " + fmtD(pt.t)));
+    } else tl.textContent = title + "  " + fmt(v) + (pt ? "  · " + fmtD(pt.t) : "");
     if (opts.pct === false) { tr.textContent = ""; } else { tr.textContent = (ch >= 0 ? "+" : "") + ch.toFixed(1) + "%"; tr.style.color = ch >= 0 ? "var(--buy)" : "var(--sell)"; }
-    if (opts.status) { const z = opts.status(v); stat.textContent = z[0]; stat.style.color = z[1]; }
+    if (opts.status) { let z = opts.status(v, pt2 ? pt2.v : null); if (typeof z[0] === "string") z = [z]; stat.textContent = ""; z.forEach((x) => { const d = el("div", null, x[0]); d.style.color = x[1]; stat.appendChild(d); }); }
     if (pt) { cur.setAttribute("x1", X(pt.t)); cur.setAttribute("x2", X(pt.t)); cur.style.display = ""; } else cur.style.display = "none";
   };
   show(null);
@@ -891,10 +900,10 @@ const ZR = "#ef5b5b", ZG = "#2fbf71", ZN0 = "#8a97a6";
 const ZN = {
   fr: { levels: [[0.03, "aşırı ısınma 0,03%", ZR], [0, "0", ZN0], [-0.01, "short squeeze −0,01%", ZG]],
     status: (v) => v > 0.03 ? ["Eşiğin ÜSTÜNDE: long'lar aşırı kalabalık, düzeltme riski", ZR] : v < -0.01 ? ["Eşiğin ALTINDA: short'lar ödüyor, yukarı sıkışma zemini", ZG] : v > 0 ? ["Normal bölge: hafif long ağırlık", ZN0] : ["Normal bölge: hafif short ağırlık", ZN0] },
-  ga: { levels: [[1.5, "aşırı long 1,5", ZR], [1, "1", ZN0], [0.8, "aşırı short 0,8", ZG]],
-    status: (v) => v > 1.5 ? ["1,5'in ÜSTÜNDE: kalabalık aşırı long (ters yönde tasfiye riski)", ZR] : v < 0.8 ? ["0,8'in ALTINDA: kalabalık aşırı short (yukarı sıkışma ihtimali)", ZG] : v >= 1 ? ["1'in üstünde ama aşırı değil: hafif long ağırlık", ZN0] : ["1'in altında ama aşırı değil: hafif short ağırlık", ZN0] },
-  tp: { levels: [[1.2, "büyükler long 1,2", ZG], [1, "1", ZN0], [0.8, "büyükler short 0,8", ZR]],
-    status: (v) => v > 1.2 ? ["1,2'nin ÜSTÜNDE: büyük oyuncular belirgin long", ZG] : v < 0.8 ? ["0,8'in ALTINDA: büyük oyuncular belirgin short", ZR] : v >= 1 ? ["Hafif long ağırlık (belirgin değil)", ZN0] : ["Hafif short ağırlık (belirgin değil)", ZN0] },
+  ls: { levels: [[1.5, "kalabalık aşırı long 1,5", ZR], [1.2, "büyükler long 1,2", ZG], [1, "1 = dengeli", ZN0], [0.8, "short bölgesi 0,8", ZR]],
+    status: (a, b) => [
+      [a > 1.5 ? "Kalabalık " + a.toFixed(2) + ": 1,5'in ÜSTÜNDE, aşırı long (ters yönde tasfiye riski)" : a < 0.8 ? "Kalabalık " + a.toFixed(2) + ": 0,8'in ALTINDA, aşırı short (yukarı sıkışma ihtimali)" : "Kalabalık " + a.toFixed(2) + ": " + (a >= 1 ? "1'in üstünde, hafif long" : "1'in altında, hafif short"), a > 1.5 ? ZR : a < 0.8 ? ZG : ZN0],
+      b == null ? ["", ZN0] : [b > 1.2 ? "Büyükler " + b.toFixed(2) + ": 1,2'nin ÜSTÜNDE, belirgin long" : b < 0.8 ? "Büyükler " + b.toFixed(2) + ": 0,8'in ALTINDA, belirgin short" : "Büyükler " + b.toFixed(2) + ": " + (b >= 1 ? "hafif long" : "hafif short"), b > 1.2 ? ZG : b < 0.8 ? ZR : ZN0]] },
   tk: { levels: [[1.1, "alım baskısı 1,1", ZG], [1, "1", ZN0], [0.9, "satış baskısı 0,9", ZR]],
     status: (v) => v > 1.1 ? ["1,1'in ÜSTÜNDE: agresif alıcılar önde", ZG] : v < 0.9 ? ["0,9'un ALTINDA: agresif satıcılar önde", ZR] : ["0,9–1,1 arası: alış/satış dengeli", ZN0] }
 };
@@ -912,10 +921,10 @@ function drawPos() {
   const days = POS_RANGES[posIdx][1], cut = days ? Date.now() - days * 864e5 : 0;
   let any = false;
   [["Açık pozisyon (OI)", posData.oi, "#4c9aff", fmtBig, true, null], ["Fonlama oranı", posData.fr, "#f5b13d", fPct, false, ZN.fr],
-   ["Kalabalık L/S (hesap)", posData.ga, "#2fbf71", fRat, false, ZN.ga], ["Büyük oyuncu L/S (pozisyon)", posData.tp, "#c084fc", fRat, false, ZN.tp],
+   ["Kalabalık ve büyük oyuncu L/S", posData.ga, "#2fbf71", fRat, false, ZN.ls],
    ["Taker alış/satış", posData.tk, "#ef5b5b", fRat, false, ZN.tk]].forEach(([n, arr, col, fmt, pct, zn]) => {
     const pts = (arr || []).filter((p) => p.t >= cut);
-    if (pts.length > 1) { box.appendChild(lineChart(n, pts, col, { group: posCharts, fmt: fmt, pct: pct, levels: zn && zn.levels, status: zn && zn.status })); any = true; }
+    if (pts.length > 1) { box.appendChild(lineChart(n, pts, col, { group: posCharts, fmt: fmt, pct: pct, levels: zn && zn.levels, status: zn && zn.status, name1: "Kalabalık", s2: zn === ZN.ls ? { name: "Büyükler", color: "#c084fc", pts: (posData.tp || []).filter((p) => p.t >= cut) } : null })); any = true; }
     else box.appendChild(el("div", "hd", n + ": veri yok"));
   });
   if (any) { box.appendChild(el("div", "hd", "Grafikleri sürükle: aynı saatteki tüm değerler birlikte görünür. L/S 1'in üstü long, altı short ağırlığı demek.")); wireCharts(posCharts); }
@@ -953,6 +962,7 @@ const INFO2 = {
   "Açık pozisyon (OI)": "Vadeli piyasada o an açık duran toplam pozisyon değeri. Fiyatla birlikte artıyorsa yeni para trendi destekliyor, hareket güçlü. Fiyat düşerken artıyorsa yeni short'lar açılıyor, düşüş baskısı sürer. Düşüyorsa pozisyonlar kapanıyor, hareket yorulur. Ani sıçramalardan sonra tasfiyeli sert hareketler gelebilir.",
   "Fonlama oranı": "Long ve short taraflar arasında her 8 saatte bir yapılan ödeme. Pozitifse long'lar short'lara öder, yani long kalabalık. %0,03 üstü aşırı ısınmadır, düzeltme riski artar. Negatifse short'lar öder; %-0,01 altı short squeeze (yukarı sıkışma) zemini hazırlar. Sıfıra yakınsa denge vardır.",
   "Kalabalık L/S (hesap)": "Long hesap sayısının short hesap sayısına oranı; çoğunluğu küçük yatırımcılardır. 1 üstü long ağırlıklı demektir. 1,5 üstü aşırı kalabalık long: ters yönde tasfiye riski. 0,8 altı kalabalık short: yukarı sıkışma ihtimali. Kalabalık sık yanıldığı için çoğu zaman ters sinyal olarak okunur.",
+  "Kalabalık ve büyük oyuncu L/S": "Yeşil çizgi kalabalığın (küçük hesapların), mor çizgi en büyük hesapların long/short oranı. 1 üstü long, altı short ağırlığı. Kalabalık 1,5 üstündeyse aşırı long: ters yönde tasfiye riski. Büyükler 1,2 üstündeyse belirgin long. İki çizgi ayrışıyorsa dikkat: büyükler long kalabalık short ise yukarı ağırlık artar, tersi aşağı ağırlık. Not: iki oran farklı yöntemle hesaplanır (hesap sayısı ve pozisyon büyüklüğü), bu yüzden değerleri birebir kıyaslama, yönlerine ve eşiklerine bak.",
   "Büyük oyuncu L/S (pozisyon)": "Binance'in en büyük hesaplarının pozisyon büyüklüğüne göre long/short oranı. 1,2 üstü büyükler long, 0,8 altı short. Kalabalıkla ters yöndeyse daha anlamlıdır: büyükler long, kalabalık short ise yukarı ağırlık artar; tersi aşağı ağırlık.",
   "Taker alış/satış": "Piyasa emriyle alanların hacminin, piyasa emriyle satanların hacmine oranı. 1 üstü alıcılar agresif demektir; 1,1 üstü belirgin alım baskısı, 0,9 altı satış baskısı. Fiyat yükselirken oran düşüyorsa yükseliş yoruluyor olabilir.",
   "TVL": "EVAA protokolüne yatırılan toplam varlık. Artış güven ve likidite girişi, hızlı düşüş çıkış demektir. Fiyat düşerken TVL sabit kalıyorsa kullanıcı sadakati güçlü; ikisi birlikte düşüyorsa zayıflık işaretidir.",
