@@ -11,6 +11,7 @@ const MIN_USD = Number(process.env.MIN_USD || 5000);        // genel eşik
 const WATCH_MIN_USD = Number(process.env.WATCH_MIN_USD || 1000); // izleme listesi eşiği
 const OUT = process.env.OUT || "evaa-feed.json";
 const STATE = process.env.STATE || "evaa-state.json";
+const STATUS = process.env.STATUS || OUT.replace(/[^/]*$/, "evaa-status.json");
 const CHUNK = 1000;
 const MAX_KEEP = 1000;
 const TRANSFER = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
@@ -155,10 +156,14 @@ async function main() {
     for (const e of list) if (!seen.has(e.key)) { feed.push(e); seen.add(e.key); added++; }
   };
 
-  let price = null;
-  try { price = await getPrice(); } catch (e) { console.error("Fiyat:", e.message); }
+  const status = { time: new Date().toISOString(), errors: [] };
+  const fail = (where, e) => { console.error(where + ":", e.message); status.errors.push(where + ": " + e.message); };
 
-  try { push(await poolTrades()); } catch (e) { console.error("Havuz:", e.message); }
+  let price = null;
+  try { price = await getPrice(); } catch (e) { fail("Fiyat", e); }
+  status.price = price;
+
+  try { push(await poolTrades()); } catch (e) { fail("Havuz", e); }
 
   if (!price) console.log("Fiyat yok, transfer taraması atlandı");
   if (price) {
@@ -166,13 +171,17 @@ async function main() {
       const r = await transfers(state, price);
       push(r.events);
       if (r.done >= r.from) state.lastBlock = r.done;
+      status.scan = { from: r.from, done: r.done, latest: r.latest, calls: r.calls, error: r.error || null };
+      if (r.error) status.errors.push("Transfer: " + r.error);
       console.log(`Transfer taraması: ${r.from}-${r.done} (hedef ${r.latest}, ${r.calls} çağrı)` + (r.error ? " · durdu: " + r.error : ""));
-    } catch (e) { console.error("Transfer:", e.message); }
+    } catch (e) { fail("Transfer", e); }
   }
 
   feed.sort((a, b) => new Date(a.time) - new Date(b.time));
   fs.writeFileSync(OUT, JSON.stringify(feed.slice(-MAX_KEEP), null, 2));
   fs.writeFileSync(STATE, JSON.stringify(state));
+  status.added = added; status.total = feed.length; status.lastBlock = state.lastBlock || null; status.rpc = RPC;
+  fs.writeFileSync(STATUS, JSON.stringify(status, null, 1));
   console.log(`Yeni: ${added}, toplam: ${feed.length}${price ? `, fiyat: $${price}` : ""}`);
 }
 

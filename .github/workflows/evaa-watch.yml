@@ -29,6 +29,7 @@ jobs:
           WATCH_MIN_USD: "1000"
           BSC_RPC: "https://bsc-rpc.publicnode.com"
           MAX_BACK: "30000"
+          STATUS: data/evaa-status.json
           OUT: data/evaa-feed.json
           STATE: data/evaa-state.json
         run: |

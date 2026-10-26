@@ -147,6 +147,7 @@
   <div class="liq" id="chBox">Yükleniyor…</div>
 
   <h2 id="sZincir">Zincir hareketleri (BSC)</h2>
+  <div class="diag" id="botStatus"></div>
   <div class="grid" id="stats" style="margin-bottom:14px"></div>
   <div class="chips" id="chips"></div>
   <div id="list"></div>
@@ -957,12 +958,25 @@ function wireSectionInfo() {
   });
 }
 
+
+async function loadBotStatus() {
+  const box = document.getElementById("botStatus"); if (!box) return;
+  try {
+    const st = await getJson(FEED_URL.replace("evaa-feed.json", "evaa-status.json") + "?t=" + Date.now());
+    const mins = Math.round((Date.now() - new Date(st.time).getTime()) / 60000);
+    const when = mins < 90 ? mins + " dk önce" : mins < 2880 ? Math.round(mins / 60) + " sa önce" : Math.round(mins / 1440) + " gün önce";
+    box.textContent = "Bot son çalışma: " + when + (st.scan ? " · taranan blok " + st.scan.done : "") + " · " + (st.errors && st.errors.length ? "uyarı: " + st.errors.join("; ") : "sorunsuz");
+  } catch (e) { box.textContent = "Bot durum dosyası henüz yok (bir sonraki bot çalışmasında oluşur)."; }
+}
+
 /* ================= Başlat ================= */
 renderStats();
 renderChips();
 loadMarket();
 loadFeed();
 wireSectionInfo();
+loadBotStatus();
+setInterval(loadBotStatus, 5 * 60 * 1000);
 startLiqFeed();
 renderPosChips();
 loadPos();
