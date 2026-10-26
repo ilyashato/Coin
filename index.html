@@ -76,12 +76,16 @@
   .lq .pct { color: var(--mute); text-align: right; font-size: 12px; }
   .lq.now { color: var(--text); font-weight: 650; border-top: 1px dashed var(--line); border-bottom: 1px dashed var(--line); margin: 4px 0; padding: 5px 0; }
   .liq .hd { color: var(--mute); font-size: 12px; margin: 6px 0 2px; }
+  .refresh { position: fixed; right: 14px; bottom: 16px; z-index: 10; background: var(--card); color: var(--text);
+             border: 1px solid var(--text); border-radius: 999px; padding: 11px 18px; font-size: 14px; cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,.5); }
+  .refresh:disabled { opacity: .5; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>EVAA Canlı Panel</h1>
   <div class="sub" id="sub">Yükleniyor…</div>
+  <button class="refresh" id="refreshBtn" type="button">⟳ Yenile</button>
 
   <div class="mkt-head">
     <div>
@@ -576,6 +580,10 @@ loadMarket();
 loadFeed();
 loadLiq();
 setInterval(loadLiq, 5 * 60 * 1000);
+document.getElementById("refreshBtn").onclick = async function () {
+  const b = this; b.disabled = true; b.textContent = "Yenileniyor…";
+  try { await Promise.allSettled([loadMarket(), loadFeed(), loadLiq()]); } finally { b.disabled = false; b.textContent = "⟳ Yenile"; }
+};
 setInterval(loadMarket, MKT_REFRESH_MS);
 setInterval(loadFeed, FEED_REFRESH_MS);
 </script>
