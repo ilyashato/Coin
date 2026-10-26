@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="EVAA">
 <title>EVAA Canlı Panel</title>
-<!-- sürüm 25 -->
+<!-- sürüm 26 -->
 <style>
   :root {
     --bg: #0b0f14; --card: #131a22; --line: #1f2a36; --text: #e8edf2; --mute: #8a97a6;
@@ -102,6 +102,7 @@
   .gauge i { position:absolute; top:-3px; width:4px; height:14px; border-radius:2px; background:var(--text); }
   .sw { position: relative; } .lvl { position: absolute; left: 2px; font-size: 10px; background: rgba(11,15,20,.7); padding: 0 4px; border-radius: 4px; pointer-events: none; }
   .zone { font-size: 12px; font-weight: 650; margin: 0 0 4px; }
+  div.m { color: var(--mute); font-size: 12px; margin: -2px 0 6px; white-space: pre-wrap; }
 </style>
 </head>
 <body>
@@ -992,7 +993,7 @@ function wallHistRender() {
    Emir defterini sık aralıkla okur. Büyük bir emir ortaya çıkıp fiyat ona yaklaşmadan kısa sürede kayboluyorsa
    "hayalet emir" (spoofing şüphesi) olarak kaydeder. Kimin yaptığı bilinemez, yalnız davranış örüntüsü yakalanır. */
 const GHOST_MS = window.__GHOST_MS || 8000, GH_KEY = "evaa_ghost_v1";
-let ghosts = [], ghTrack = {}, ghPolls = 0, ghLastOk = 0, ghStart = Date.now();
+let ghMid = null, ghosts = [], ghTrack = {}, ghPolls = 0, ghLastOk = 0, ghStart = Date.now();
 try { ghosts = JSON.parse(localStorage.getItem(GH_KEY) || "[]"); } catch (e) { ghosts = []; }
 async function ghostPoll() {
   if (document.visibilityState === "hidden") return;
@@ -1003,7 +1004,7 @@ async function ghostPoll() {
     const take = (arr, side) => arr.forEach(([p, q]) => { if (Math.abs(p / mid - 1) <= 0.1) { const n = p * q; cur[side + p] = { side: side, p: p, n: n }; all.push(n); } });
     take(bids, "alış"); take(asks, "satış");
     all.sort((a, b) => a - b); const med = all.length ? all[all.length >> 1] : 0, MIN = Math.max(1500, med * 4);
-    ghPolls++; ghLastOk = now;
+    ghPolls++; ghLastOk = now; ghMid = mid;
     // mevcutları güncelle
     Object.keys(cur).forEach((k) => { const c = cur[k], t = ghTrack[k];
       if (t) { t.last = now; t.lastN = c.n; t.max = Math.max(t.max, c.n); t.minD = Math.min(t.minD, Math.abs(mid / c.p - 1)); t.seen++; }
@@ -1036,6 +1037,20 @@ function ghostRender() {
   else if (sb.n > sa.n * 2) { cmt = "Alış tarafında sahte duvarlar öne çıkıyor: güçlü destek varmış izlenimi verilip alıcı çekilmeye çalışılıyor olabilir."; col = "var(--buy)"; }
   else cmt = "İki tarafta da hayalet emir var: defterde robot hareketliliği yüksek, duvarlara güvenme.";
   const c = el("div", "zone", cmt); c.style.color = col; box.appendChild(c);
+  if (ghosts.length) {
+    const grp = {};
+    ghosts.filter((g) => Date.now() - g.t < 864e5).forEach((g) => { const k = g.side + g.p.toFixed(3), x = grp[k] || (grp[k] = { side: g.side, p: +g.p.toFixed(3), c: 0, n: 0, mx: 0, last: 0 }); x.c++; x.n += g.n; x.mx = Math.max(x.mx, g.n); x.last = Math.max(x.last, g.t); });
+    const rows = Object.keys(grp).map((k) => grp[k]).sort((a, b) => b.c - a.c || b.n - a.n).slice(0, 6), mxc = Math.max(1, ...rows.map((r) => r.c));
+    box.appendChild(el("div", "hd", "Hayalet emirlerin yoğunlaştığı seviyeler (son 24 saat)"));
+    rows.forEach((r) => {
+      const d = el("div", "lq " + (r.side === "satış" ? "up" : "dn")); d.style.gridTemplateColumns = "96px 1fr 84px";
+      d.appendChild(el("span", null, "$" + r.p.toFixed(3) + " " + r.side));
+      const bar = el("div", "bar"), i = document.createElement("i"); i.style.width = Math.max(8, r.c / mxc * 100) + "%"; bar.appendChild(i); d.appendChild(bar);
+      d.appendChild(el("span", "pct", r.c + "× · " + fmtUsd(r.mx))); box.appendChild(d);
+      const dist = ghMid ? ((r.p / ghMid - 1) * 100) : null;
+      box.appendChild(el("div", "m", "   en büyüğü " + fmtUsd(r.mx) + " · toplam " + fmtUsd(r.n) + (dist != null ? " · şu anki fiyata " + (dist >= 0 ? "+%" : "−%") + Math.abs(dist).toFixed(1) + " uzakta" : "") + " · son " + new Date(r.last).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })));
+    });
+  }
   if (ghosts.length) { box.appendChild(el("div", "hd", "Son yakalananlar"));
     ghosts.slice(0, 8).forEach((g) => { const r = el("div", "pl"); r.appendChild(el("span", "dot " + (g.side === "satış" ? "dn" : "up")));
       const dv = el("div"); dv.appendChild(el("b", null, "$" + g.p.toFixed(4) + " " + g.side + " · " + fmtUsd(g.n)));
