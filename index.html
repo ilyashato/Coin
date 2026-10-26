@@ -79,6 +79,9 @@
   .refresh { position: fixed; right: 14px; bottom: 16px; z-index: 10; background: var(--card); color: var(--text);
              border: 1px solid var(--text); border-radius: 999px; padding: 11px 18px; font-size: 14px; cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,.5); }
   .refresh:disabled { opacity: .5; }
+  .chart { margin: 4px 0 12px; } .chart .t { display:flex; justify-content:space-between; font-size:13px; margin-bottom:2px; }
+  .chart .t b { font-weight:650; } .chart svg { width:100%; height:120px; display:block; }
+  .chart .ax { display:flex; justify-content:space-between; color:var(--mute); font-size:11px; }
 </style>
 </head>
 <body>
@@ -98,8 +101,13 @@
   <div class="diag" id="diag"></div>
 
   <h2>Likidasyon hedefleri (tahmini)</h2>
+  <div class="chips" id="liqChips"></div>
   <div class="liq" id="liq">Yükleniyor…</div>
   <div class="diag" id="liqNote"></div>
+
+  <h2>TVL ve FDV seyri</h2>
+  <div class="chips" id="chChips"></div>
+  <div class="liq" id="chBox">Yükleniyor…</div>
 
   <h2>Zincir hareketleri (BSC)</h2>
   <div class="grid" id="stats" style="margin-bottom:14px"></div>
@@ -524,10 +532,20 @@ async function loadFeed() {
 /* ================= Likidasyon hedefleri (Binance vadeli verisinden tahmin) =================
    Her saatlik mumun hacmi o fiyattan açılan pozisyon sayılır; 10x/25x/50x/100x kaldıraçla
    long/short likidasyon fiyatı hesaplanır. Fiyatın sonradan değmediği seviyeler "duran" sayılır. */
+const LIQ_RANGES = [["12h","5m",144],["24h","15m",96],["48h","15m",192],["3d","30m",144],["1w","1h",168],["2w","1h",336],["1 ay","1h",720],["3 ay","4h",540]];
+let liqIdx = 6;
+function renderLiqChips() {
+  const box = document.getElementById("liqChips"); box.textContent = "";
+  LIQ_RANGES.forEach((r, i) => {
+    const c = el("button", "chip" + (i === liqIdx ? " on" : ""), r[0]);
+    c.onclick = () => { liqIdx = i; renderLiqChips(); loadLiq(); };
+    box.appendChild(c);
+  });
+}
 async function loadLiq() {
   const box = document.getElementById("liq"), note = document.getElementById("liqNote");
   try {
-    const k = await getJson("https://fapi.binance.com/fapi/v1/klines?symbol=" + PERP + "&interval=1h&limit=720");
+    const k = await getJson("https://fapi.binance.com/fapi/v1/klines?symbol=" + PERP + "&interval=" + LIQ_RANGES[liqIdx][1] + "&limit=" + LIQ_RANGES[liqIdx][2]);
     const c = k.map((x) => ({ h: +x[2], l: +x[3], cl: +x[4], v: +x[7] }));
     const price = c[c.length - 1].cl;
     // sonradan görülen en düşük/en yüksek (suffix)
@@ -567,10 +585,72 @@ async function loadLiq() {
     const tot = upSum + dnSum, upPct = tot ? Math.round(upSum / tot * 100) : 0;
     note.textContent = "Likidite dağılımı: yukarıda %" + upPct + " / aşağıda %" + (100 - upPct) +
       (upPct >= 55 ? " → yoğunluk yukarıda, çekim yönü yukarı olabilir" : upPct <= 45 ? " → yoğunluk aşağıda, çekim yönü aşağı olabilir" : " → dengeli") +
-      ". Binance EVAAUSDT, son 30 gün, model tahminidir (Coinglass değildir); yatırım tavsiyesi değildir.";
+      ". Binance EVAAUSDT, seçili aralık (" + LIQ_RANGES[liqIdx][0] + "), model tahminidir (Coinglass değildir); yatırım tavsiyesi değildir.";
   } catch (err) {
     box.textContent = "Likidasyon verisi alınamadı (" + err.message + ")";
   }
+}
+
+
+/* ================= TVL ve FDV grafikleri ================= */
+const CH_RANGES = [["7G", 7], ["30G", 30], ["90G", 90], ["Tümü", 0]];
+let chIdx = 1, chData = null;
+function renderChChips() {
+  const box = document.getElementById("chChips"); box.textContent = "";
+  CH_RANGES.forEach((r, i) => {
+    const c = el("button", "chip" + (i === chIdx ? " on" : ""), r[0]);
+    c.onclick = () => { chIdx = i; renderChChips(); drawCharts(); };
+    box.appendChild(c);
+  });
+}
+function fmtBig(v) { return v >= 1e9 ? "$" + (v / 1e9).toFixed(2) + " Mr" : v >= 1e6 ? "$" + (v / 1e6).toFixed(2) + " Mn" : "$" + Math.round(v).toLocaleString("tr-TR"); }
+function lineChart(title, pts, color) {
+  const w = el("div", "chart");
+  const first = pts[0].v, last = pts[pts.length - 1].v, ch = (last / first - 1) * 100;
+  const t = el("div", "t"); t.appendChild(el("b", null, title + "  " + fmtBig(last)));
+  const cs = el("span", null, (ch >= 0 ? "+" : "") + ch.toFixed(1) + "%"); cs.style.color = ch >= 0 ? "var(--buy)" : "var(--sell)"; t.appendChild(cs);
+  w.appendChild(t);
+  const W = 600, H = 120, mn = Math.min(...pts.map((p) => p.v)), mx = Math.max(...pts.map((p) => p.v)), t0 = pts[0].t, t1 = pts[pts.length - 1].t;
+  const X = (t) => (t1 === t0 ? 0 : (t - t0) / (t1 - t0) * W), Y = (v) => H - 6 - (mx === mn ? 0.5 : (v - mn) / (mx - mn)) * (H - 12);
+  const NS = "http://www.w3.org/2000/svg", svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("viewBox", "0 0 " + W + " " + H); svg.setAttribute("preserveAspectRatio", "none");
+  const path = document.createElementNS(NS, "path");
+  path.setAttribute("d", pts.map((p, i) => (i ? "L" : "M") + X(p.t).toFixed(1) + " " + Y(p.v).toFixed(1)).join(" "));
+  path.setAttribute("fill", "none"); path.setAttribute("stroke", color); path.setAttribute("stroke-width", "2"); path.setAttribute("vector-effect", "non-scaling-stroke");
+  svg.appendChild(path); w.appendChild(svg);
+  const ax = el("div", "ax"); const d = (x) => new Date(x).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
+  ax.appendChild(el("span", null, d(t0) + " · min " + fmtBig(mn))); ax.appendChild(el("span", null, "max " + fmtBig(mx) + " · " + d(t1))); w.appendChild(ax);
+  return w;
+}
+function drawCharts() {
+  const box = document.getElementById("chBox"); box.textContent = "";
+  if (!chData) return;
+  const days = CH_RANGES[chIdx][1], cut = days ? Date.now() - days * 864e5 : 0;
+  let any = false;
+  [["TVL", chData.tvl, "#4c9aff"], ["FDV", chData.fdv, "#f5b13d"]].forEach(([n, arr, col]) => {
+    const pts = (arr || []).filter((p) => p.t >= cut);
+    if (pts.length > 1) { box.appendChild(lineChart(n, pts, col)); any = true; }
+    else box.appendChild(el("div", "hd", n + ": veri yok"));
+  });
+  if (!any) box.appendChild(el("div", "hd", "Grafik verisi alınamadı"));
+}
+async function loadCharts() {
+  const res = await Promise.allSettled([
+    getJson("https://api.llama.fi/protocol/" + LLAMA_SLUG),
+    getJson("https://api.geckoterminal.com/api/v2/networks/bsc/tokens/" + BSC_TOKEN),
+    getJson("https://fapi.binance.com/fapi/v1/klines?symbol=" + PERP + "&interval=1d&limit=500")
+  ]);
+  const d = { tvl: [], fdv: [] };
+  if (res[0].status === "fulfilled") d.tvl = (res[0].value.tvl || []).map((x) => ({ t: x.date * 1000, v: x.totalLiquidityUSD })).filter((x) => x.v > 0);
+  if (res[1].status === "fulfilled" && res[2].status === "fulfilled") {
+    const a = res[1].value.data.attributes, price = Number(a.price_usd), fdv = Number(a.fdv_usd);
+    if (price > 0 && fdv > 0) {
+      const sup = fdv / price;
+      d.fdv = res[2].value.map((k) => ({ t: +k[0], v: +k[4] * sup }));
+      d.fdv.push({ t: Date.now(), v: fdv });
+    }
+  }
+  chData = d; drawCharts();
 }
 
 /* ================= Başlat ================= */
@@ -578,11 +658,15 @@ renderStats();
 renderChips();
 loadMarket();
 loadFeed();
+renderLiqChips();
+renderChChips();
+loadCharts();
 loadLiq();
+setInterval(loadCharts, 10 * 60 * 1000);
 setInterval(loadLiq, 5 * 60 * 1000);
 document.getElementById("refreshBtn").onclick = async function () {
   const b = this; b.disabled = true; b.textContent = "Yenileniyor…";
-  try { await Promise.allSettled([loadMarket(), loadFeed(), loadLiq()]); } finally { b.disabled = false; b.textContent = "⟳ Yenile"; }
+  try { await Promise.allSettled([loadMarket(), loadFeed(), loadLiq(), loadCharts()]); } finally { b.disabled = false; b.textContent = "⟳ Yenile"; }
 };
 setInterval(loadMarket, MKT_REFRESH_MS);
 setInterval(loadFeed, FEED_REFRESH_MS);
