@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="EVAA">
 <title>EVAA Canlı Panel</title>
-<!-- sürüm 23 -->
+<!-- sürüm 24 -->
 <style>
   :root {
     --bg: #0b0f14; --card: #131a22; --line: #1f2a36; --text: #e8edf2; --mute: #8a97a6;
@@ -135,6 +135,8 @@
   <h2 id="sDuvar">Emir defteri duvarları</h2>
   <div class="liq" id="wallBox">Yükleniyor…</div>
   <div class="diag" id="wallNote"></div>
+  <div class="liq" id="wallHist" style="margin-top:10px">Değişim için kayıt biriktiriliyor…</div>
+  <div class="diag" id="wallHistNote"></div>
 
   <h2 id="sCanli">Canlı likidasyonlar</h2>
   <div class="liq" id="lvBox">Bağlanıyor…</div>
@@ -849,6 +851,11 @@ function renderPulse() {
     else if (r < 0.77) S.push(sig(-0.3, "Emir defteri satıcı ağırlıklı (" + r.toFixed(2) + "x)", "±%3 içinde satış emirleri alışlardan fazla; direnç daha dolu."));
     else S.push(sig(0, "Emir defteri dengeli (" + r.toFixed(2) + "x)", ""));
   }
+  if (wall && ok(wall.aC) && ok(wall.bC)) {
+    const sc = (wall.aC <= -20 ? 0.3 : wall.aC >= 20 ? -0.3 : 0) + (wall.bC >= 20 ? 0.3 : wall.bC <= -20 ? -0.3 : 0);
+    S.push(sig(sc, "Emir defteri değişimi (" + wall.lab + "): satış " + (wall.aC >= 0 ? "+" : "−") + Math.abs(wall.aC).toFixed(0) + "%, alış " + (wall.bC >= 0 ? "+" : "−") + Math.abs(wall.bC).toFixed(0) + "%",
+      sc > 0 ? "Direnç inceliyor ve/veya destek kalınlaşıyor." : sc < 0 ? "Direnç kalınlaşıyor ve/veya destek çekiliyor." : "Belirgin bir kayma yok."));
+  }
   if (P.fng) S.push(sig(P.fng.v <= 25 ? 0.1 : P.fng.v >= 75 ? -0.1 : 0, "Korku/Hırs endeksi: " + P.fng.v + " (" + P.fng.c + ")", "Genel kripto piyasası duyarlılığı."));
   box.textContent = "";
   if (!S.length) { box.textContent = "Veriler toplanıyor…"; return; }
@@ -870,19 +877,22 @@ async function loadWalls() {
   try {
     const d = await getJson("https://fapi.binance.com/fapi/v1/depth?symbol=" + PERP + "&limit=1000");
     const bids = d.bids.map((x) => [+x[0], +x[1]]), asks = d.asks.map((x) => [+x[0], +x[1]]);
-    const mid = (bids[0][0] + asks[0][0]) / 2, step = mid * 0.005, B = {}, A = {};
-    bids.forEach(([p, q]) => { if (p > mid * 0.9) { const k = Math.floor(p / step); B[k] = (B[k] || 0) + p * q; } });
-    asks.forEach(([p, q]) => { if (p < mid * 1.1) { const k = Math.floor(p / step); A[k] = (A[k] || 0) + p * q; } });
-    const toRows = (o) => Object.keys(o).map((k) => ({ p: (+k + 0.5) * step, v: o[k] }));
+    const mid = (bids[0][0] + asks[0][0]) / 2, B = {}, A = {};
+    const rb = (p) => Math.floor((p / mid - 1) * 200);   // her kova %0,5 genişliğinde, orta fiyata göre
+    bids.forEach(([p, q]) => { const r = rb(p); if (r >= -20 && r <= -1) B[r] = (B[r] || 0) + p * q; });
+    asks.forEach(([p, q]) => { const r = rb(p); if (r >= 0 && r <= 19) A[r] = (A[r] || 0) + p * q; });
+    const toRows = (o) => Object.keys(o).map((k) => ({ p: mid * (1 + (+k + 0.5) / 200), v: o[k] }));
     const bR = toRows(B), aR = toRows(A);
-    const near = (rows, sign) => rows.filter((r) => Math.abs(r.p / mid - 1) <= 0.03).reduce((t, r) => t + r.v, 0);
+    const near = (rows) => rows.filter((r) => Math.abs(r.p / mid - 1) <= 0.03).reduce((t, r) => t + r.v, 0);
     const bN = near(bR), aN = near(aR);
-    P.wall = { ratio: aN > 0 ? bN / aN : null }; renderPulse();
+    P.wall = { ratio: aN > 0 ? bN / aN : null };
+    wallSnapshot(mid, B, A);
+    renderPulse();
     const top = (rows) => rows.sort((x, y) => y.v - x.v).slice(0, 4).sort((x, y) => y.p - x.p);
     const aT = top(aR), bT = top(bR), mx = Math.max(1, ...aT.map((r) => r.v), ...bT.map((r) => r.v));
     const line = (r, cls) => { const x = el("div", "lq " + cls); x.appendChild(el("span", null, "$" + r.p.toFixed(3)));
       const bar = el("div", "bar"), i = document.createElement("i"); i.style.width = Math.max(4, r.v / mx * 100) + "%"; bar.appendChild(i); x.appendChild(bar);
-      x.appendChild(el("span", "pct", fmtBig(r.v))); return x; };
+      x.appendChild(el("span", "pct", fmtUsd(r.v))); return x; };
     box.textContent = "";
     box.appendChild(el("div", "hd", "Satış duvarları (direnç) · ±%10"));
     aT.forEach((r) => box.appendChild(line(r, "up")));
@@ -891,6 +901,86 @@ async function loadWalls() {
     bT.forEach((r) => box.appendChild(line(r, "dn")));
     note.textContent = "Binance EVAAUSDT vadeli emir defteri (ilk 1000 kademe), %0,5'lik fiyat dilimlerinde toplanmıştır. Büyük duvarlar emir iptaliyle kaybolabilir; kesin destek/direnç sayılmaz.";
   } catch (err) { box.textContent = "Emir defteri alınamadı (" + err.message + ")"; }
+}
+
+
+/* ================= Emir defteri değişimi (kayıt + karşılaştırma) =================
+   Borsalar geçmiş emir defterini vermez; bu yüzden sayfa açıkken her 5 dakikada bir kayıt alınır ve bu telefonda saklanır. */
+const fmtUsd = (v) => v >= 1e6 ? "$" + (v / 1e6).toFixed(2) + " Mn" : v >= 1e3 ? "$" + (v / 1e3).toFixed(1) + " Bin" : "$" + Math.round(v);
+const WS_KEY = "evaa_depth_v1";
+let wSnaps = [];
+try { wSnaps = JSON.parse(localStorage.getItem(WS_KEY) || "[]"); } catch (e) { wSnaps = []; }
+const sumR = (o, a, b) => { let t = 0; for (let r = a; r <= b; r++) t += o[r] || 0; return t; };
+const nearB = (s) => sumR(s.b, -6, -1), nearA = (s) => sumR(s.a, 0, 5);
+function wallSnapshot(mid, B, A) {
+  const last = wSnaps[wSnaps.length - 1], round = (o) => { const x = {}; Object.keys(o).forEach((k) => { x[k] = Math.round(o[k]); }); return x; };
+  if (last && Date.now() - last.t < 270000) { wallHistRender(); return; }
+  wSnaps.push({ t: Date.now(), m: mid, b: round(B), a: round(A) });
+  if (wSnaps.length > 900) wSnaps = wSnaps.slice(-900);
+  try { localStorage.setItem(WS_KEY, JSON.stringify(wSnaps)); } catch (e) { try { wSnaps = wSnaps.slice(-300); localStorage.setItem(WS_KEY, JSON.stringify(wSnaps)); } catch (e2) {} }
+  wallHistRender();
+}
+function snapAgo(ms) {
+  const target = Date.now() - ms; let best = null;
+  for (const s of wSnaps) if (!best || Math.abs(s.t - target) < Math.abs(best.t - target)) best = s;
+  return best && Math.abs(best.t - target) <= Math.max(600000, ms * 0.3) ? best : null;
+}
+const pctTxt = (n) => (n >= 0 ? "+" : "−") + Math.abs(n).toFixed(0) + "%";
+let wallCharts = [];
+function wallHistRender() {
+  const box = document.getElementById("wallHist"), note = document.getElementById("wallHistNote"); if (!box) return;
+  if (window.__wdrag && Date.now() - window.__wdrag < 8000) return;
+  box.textContent = ""; wallCharts = [];
+  const now = wSnaps[wSnaps.length - 1];
+  if (!now || wSnaps.length < 2) { box.textContent = "Değişim için kayıt biriktiriliyor… Sayfa açık kaldıkça her 5 dakikada bir kayıt alınır."; note.textContent = ""; return; }
+  box.appendChild(el("div", "hd", "Süreye göre değişim (±%3 içindeki emirler)"));
+  const WIN = [["15 dk", 9e5], ["1 saat", 36e5], ["4 saat", 144e5], ["24 saat", 864e5]];
+  let used = null;
+  WIN.forEach(([lab, ms]) => {
+    const old = snapAgo(ms); if (!old || old === now) return;
+    const aC = nearA(old) > 0 ? (nearA(now) / nearA(old) - 1) * 100 : null, bC = nearB(old) > 0 ? (nearB(now) / nearB(old) - 1) * 100 : null;
+    if (aC == null || bC == null) return;
+    const row = el("div", "lq"); row.style.gridTemplateColumns = "56px 1fr 1fr";
+    row.appendChild(el("span", null, lab));
+    const sa = el("span", null, "Satış " + pctTxt(aC)); sa.style.color = aC <= -10 ? "var(--buy)" : aC >= 10 ? "var(--sell)" : "var(--mute)";
+    const sb = el("span", null, "Alış " + pctTxt(bC)); sb.style.color = bC >= 10 ? "var(--buy)" : bC <= -10 ? "var(--sell)" : "var(--mute)";
+    row.appendChild(sa); row.appendChild(sb); box.appendChild(row);
+    const cand = { ms: ms, old: old, aC: aC, bC: bC, lab: lab };
+    if (!used || ms === 36e5) used = cand;
+  });
+  if (used) {
+    const out = [];
+    if (used.aC <= -20) out.push(["Satış emirleri azalıyor (" + pctTxt(used.aC) + "): yukarıdaki direnç inceliyor, yükseliş için yol açılıyor.", "var(--buy)"]);
+    else if (used.aC >= 20) out.push(["Satış emirleri artıyor (" + pctTxt(used.aC) + "): yukarıda direnç kalınlaşıyor, yükseliş zorlaşabilir.", "var(--sell)"]);
+    if (used.bC >= 20) out.push(["Alış emirleri artıyor (" + pctTxt(used.bC) + "): aşağıda destek güçleniyor.", "var(--buy)"]);
+    else if (used.bC <= -20) out.push(["Alış emirleri çekiliyor (" + pctTxt(used.bC) + "): destek zayıflıyor, düşüş riski artıyor.", "var(--sell)"]);
+    if (!out.length) out.push(["Son " + used.lab + " içinde belirgin bir değişim yok, defter dengeli.", "var(--mute)"]);
+    out.forEach((x) => { const d = el("div", "zone", x[0]); d.style.color = x[1]; box.appendChild(d); });
+    P.wall = Object.assign(P.wall || {}, { aC: used.aC, bC: used.bC, lab: used.lab }); renderPulse();
+    // en çok değişen seviyeler
+    const mv = [];
+    const add = (side, o1, o0, sign) => Object.keys(o1).concat(Object.keys(o0)).filter((k, i, a) => a.indexOf(k) === i).forEach((k) => {
+      const d = (o1[k] || 0) - (o0[k] || 0); mv.push({ side: side, p: now.m * (1 + (+k + 0.5) / 200), d: d, from: o0[k] || 0, to: o1[k] || 0 }); });
+    add("satış", now.a, used.old.a); add("alış", now.b, used.old.b);
+    mv.sort((x, y) => Math.abs(y.d) - Math.abs(x.d));
+    const big = mv.filter((x) => Math.abs(x.d) >= Math.max(1500, 0.25 * Math.max(x.from, x.to))).slice(0, 4);
+    if (big.length) {
+      box.appendChild(el("div", "hd", "Son " + used.lab + " içinde en çok değişen seviyeler"));
+      big.forEach((x) => { const r = el("div", "pl"); const dot = el("span", "dot " + ((x.side === "satış") === (x.d < 0) ? "up" : "dn")); r.appendChild(dot);
+        const dv = el("div"); dv.appendChild(el("b", null, "$" + x.p.toFixed(3) + " civarı " + x.side + " emirleri " + (x.d > 0 ? "arttı" : "azaldı") + " (" + (x.d > 0 ? "+" : "−") + fmtUsd(Math.abs(x.d)) + ")"));
+        dv.appendChild(el("span", "sm", fmtUsd(x.from) + " → " + fmtUsd(x.to) + (x.side === "satış" ? (x.d < 0 ? " · direnç inceldi" : " · direnç kalınlaştı") : (x.d > 0 ? " · destek güçlendi" : " · destek zayıfladı")))); r.appendChild(dv); box.appendChild(r); });
+    }
+  }
+  // zaman serisi grafiği
+  const bid = wSnaps.map((x) => ({ t: x.t, v: nearB(x) })).filter((x) => x.v > 0), ask = wSnaps.map((x) => ({ t: x.t, v: nearA(x) })).filter((x) => x.v > 0);
+  if (bid.length > 2 && ask.length > 2) {
+    box.appendChild(lineChart("Emir defteri seyri", bid, "#2fbf71", { group: wallCharts, fmt: fmtUsd, pct: false, name1: "Alış", s2: { name: "Satış", color: "#ef5b5b", pts: ask },
+      status: (b, a) => [[a ? "Alıcı/satıcı oranı " + (b / a).toFixed(2) + "x " + (b / a > 1.3 ? "(alıcılar baskın)" : b / a < 0.77 ? "(satıcılar baskın)" : "(dengeli)") : "", b / a > 1.3 ? "var(--buy)" : b / a < 0.77 ? "var(--sell)" : "var(--mute)"]] }));
+    wireCharts(wallCharts);
+    wallCharts.forEach((c) => { c.svg.addEventListener("pointerdown", () => { window.__wdrag = Date.now(); }); c.svg.addEventListener("pointermove", () => { window.__wdrag = Date.now(); }); });
+  }
+  const span = (now.t - wSnaps[0].t) / 36e5;
+  note.textContent = wSnaps.length + " kayıt · " + (span < 1 ? Math.round(span * 60) + " dakikalık" : span.toFixed(1) + " saatlik") + " geçmiş. Kayıtlar yalnızca sayfa açıkken alınır ve bu telefonda saklanır; ne kadar çok açık tutarsan değişim analizi o kadar uzun döneme bakar.";
 }
 
 /* ================= Pozisyonlanma grafikleri ================= */
@@ -963,6 +1053,7 @@ const INFO2 = {
   "Fonlama oranı": "Long ve short taraflar arasında her 8 saatte bir yapılan ödeme. Pozitifse long'lar short'lara öder, yani long kalabalık. %0,03 üstü aşırı ısınmadır, düzeltme riski artar. Negatifse short'lar öder; %-0,01 altı short squeeze (yukarı sıkışma) zemini hazırlar. Sıfıra yakınsa denge vardır.",
   "Kalabalık L/S (hesap)": "Long hesap sayısının short hesap sayısına oranı; çoğunluğu küçük yatırımcılardır. 1 üstü long ağırlıklı demektir. 1,5 üstü aşırı kalabalık long: ters yönde tasfiye riski. 0,8 altı kalabalık short: yukarı sıkışma ihtimali. Kalabalık sık yanıldığı için çoğu zaman ters sinyal olarak okunur.",
   "Kalabalık ve büyük oyuncu L/S": "Yeşil çizgi kalabalığın (küçük hesapların), mor çizgi en büyük hesapların long/short oranı. 1 üstü long, altı short ağırlığı. Kalabalık 1,5 üstündeyse aşırı long: ters yönde tasfiye riski. Büyükler 1,2 üstündeyse belirgin long. İki çizgi ayrışıyorsa dikkat: büyükler long kalabalık short ise yukarı ağırlık artar, tersi aşağı ağırlık. Not: iki oran farklı yöntemle hesaplanır (hesap sayısı ve pozisyon büyüklüğü), bu yüzden değerleri birebir kıyaslama, yönlerine ve eşiklerine bak.",
+  "Emir defteri seyri": "Yeşil çizgi fiyatın ±%3 altındaki toplam alış emri, kırmızı çizgi ±%3 üstündeki toplam satış emri tutarı. Kırmızı çizgi düşüyorsa satış duvarı eriyor, yukarı çıkış kolaylaşıyor. Yeşil çizgi yükseliyorsa destek kalınlaşıyor. Yeşil kırmızıyı geçerse alıcılar baskın. Emirler hızla iptal edilebilir, tek başına işaret sayma.",
   "Büyük oyuncu L/S (pozisyon)": "Binance'in en büyük hesaplarının pozisyon büyüklüğüne göre long/short oranı. 1,2 üstü büyükler long, 0,8 altı short. Kalabalıkla ters yöndeyse daha anlamlıdır: büyükler long, kalabalık short ise yukarı ağırlık artar; tersi aşağı ağırlık.",
   "Taker alış/satış": "Piyasa emriyle alanların hacminin, piyasa emriyle satanların hacmine oranı. 1 üstü alıcılar agresif demektir; 1,1 üstü belirgin alım baskısı, 0,9 altı satış baskısı. Fiyat yükselirken oran düşüyorsa yükseliş yoruluyor olabilir.",
   "TVL": "EVAA protokolüne yatırılan toplam varlık. Artış güven ve likidite girişi, hızlı düşüş çıkış demektir. Fiyat düşerken TVL sabit kalıyorsa kullanıcı sadakati güçlü; ikisi birlikte düşüyorsa zayıflık işaretidir.",
