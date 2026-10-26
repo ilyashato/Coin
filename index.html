@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="EVAA">
 <title>EVAA Canlı Panel</title>
-<!-- sürüm 24 -->
+<!-- sürüm 25 -->
 <style>
   :root {
     --bg: #0b0f14; --card: #131a22; --line: #1f2a36; --text: #e8edf2; --mute: #8a97a6;
@@ -108,7 +108,7 @@
 <div class="wrap">
   <h1>EVAA Canlı Panel</h1>
   <nav class="nav" id="nav">
-    <a href="#sNabiz">Nabız</a><a href="#sLiq">Likidasyon</a><a href="#sDuvar">Duvarlar</a><a href="#sCanli">Canlı</a><a href="#sPoz">Pozisyon</a><a href="#sSeyir">Seyir</a><a href="#sZincir">Zincir</a>
+    <a href="#sNabiz">Nabız</a><a href="#sLiq">Likidasyon</a><a href="#sDuvar">Duvarlar</a><a href="#sRobot">Robot</a><a href="#sCanli">Canlı</a><a href="#sPoz">Pozisyon</a><a href="#sSeyir">Seyir</a><a href="#sZincir">Zincir</a>
   </nav>
   <div class="sub" id="sub">Yükleniyor…</div>
   <button class="refresh" id="refreshBtn" type="button">⟳ Yenile</button>
@@ -137,6 +137,10 @@
   <div class="diag" id="wallNote"></div>
   <div class="liq" id="wallHist" style="margin-top:10px">Değişim için kayıt biriktiriliyor…</div>
   <div class="diag" id="wallHistNote"></div>
+
+  <h2 id="sRobot">Robot / hayalet emirler</h2>
+  <div class="liq" id="ghostBox">İzleme başlıyor…</div>
+  <div class="diag" id="ghostNote"></div>
 
   <h2 id="sCanli">Canlı likidasyonlar</h2>
   <div class="liq" id="lvBox">Bağlanıyor…</div>
@@ -983,6 +987,63 @@ function wallHistRender() {
   note.textContent = wSnaps.length + " kayıt · " + (span < 1 ? Math.round(span * 60) + " dakikalık" : span.toFixed(1) + " saatlik") + " geçmiş. Kayıtlar yalnızca sayfa açıkken alınır ve bu telefonda saklanır; ne kadar çok açık tutarsan değişim analizi o kadar uzun döneme bakar.";
 }
 
+
+/* ================= Robot / hayalet emir avcısı =================
+   Emir defterini sık aralıkla okur. Büyük bir emir ortaya çıkıp fiyat ona yaklaşmadan kısa sürede kayboluyorsa
+   "hayalet emir" (spoofing şüphesi) olarak kaydeder. Kimin yaptığı bilinemez, yalnız davranış örüntüsü yakalanır. */
+const GHOST_MS = window.__GHOST_MS || 8000, GH_KEY = "evaa_ghost_v1";
+let ghosts = [], ghTrack = {}, ghPolls = 0, ghLastOk = 0, ghStart = Date.now();
+try { ghosts = JSON.parse(localStorage.getItem(GH_KEY) || "[]"); } catch (e) { ghosts = []; }
+async function ghostPoll() {
+  if (document.visibilityState === "hidden") return;
+  try {
+    const d = await getJson("https://fapi.binance.com/fapi/v1/depth?symbol=" + PERP + "&limit=500");
+    const now = Date.now(), bids = d.bids.map((x) => [+x[0], +x[1]]), asks = d.asks.map((x) => [+x[0], +x[1]]);
+    const mid = (bids[0][0] + asks[0][0]) / 2, cur = {}, all = [];
+    const take = (arr, side) => arr.forEach(([p, q]) => { if (Math.abs(p / mid - 1) <= 0.1) { const n = p * q; cur[side + p] = { side: side, p: p, n: n }; all.push(n); } });
+    take(bids, "alış"); take(asks, "satış");
+    all.sort((a, b) => a - b); const med = all.length ? all[all.length >> 1] : 0, MIN = Math.max(1500, med * 4);
+    ghPolls++; ghLastOk = now;
+    // mevcutları güncelle
+    Object.keys(cur).forEach((k) => { const c = cur[k], t = ghTrack[k];
+      if (t) { t.last = now; t.lastN = c.n; t.max = Math.max(t.max, c.n); t.minD = Math.min(t.minD, Math.abs(mid / c.p - 1)); t.seen++; }
+      else if (c.n >= MIN) ghTrack[k] = { side: c.side, p: c.p, first: now, last: now, max: c.n, lastN: c.n, minD: Math.abs(mid / c.p - 1), seen: 1 }; });
+    // kaybolanları değerlendir
+    Object.keys(ghTrack).forEach((k) => { const t = ghTrack[k], c = cur[k];
+      const gone = !c || c.n < t.max * 0.3;
+      if (!gone) return;
+      const life = (now - t.first) / 1000;
+      if (t.seen >= 2 && life >= GHOST_MS / 1000 * 1.5 && life <= 900 && t.minD > 0.003 && t.max >= MIN)
+        ghosts.unshift({ t: now, side: t.side, p: t.p, n: Math.round(t.max), life: Math.round(life), dist: t.minD * 100 });
+      delete ghTrack[k]; });
+    if (ghosts.length > 150) ghosts.length = 150;
+    try { localStorage.setItem(GH_KEY, JSON.stringify(ghosts)); } catch (e) {}
+    ghostRender();
+  } catch (e) { const box = document.getElementById("ghostBox"); if (box && !ghLastOk) box.textContent = "Emir defteri okunamadı (" + e.message + ")"; }
+}
+function ghostRender() {
+  const box = document.getElementById("ghostBox"), note = document.getElementById("ghostNote"); if (!box) return;
+  box.textContent = "";
+  const hr = ghosts.filter((g) => Date.now() - g.t < 36e5), day = ghosts.filter((g) => Date.now() - g.t < 864e5);
+  const agg = (arr, side) => { const a = arr.filter((g) => g.side === side); return { c: a.length, n: a.reduce((t, g) => t + g.n, 0) }; };
+  const sa = agg(hr, "satış"), sb = agg(hr, "alış");
+  const st = el("div", "lvs"); st.appendChild(el("span", null, "Son 1 saat: " + hr.length + " hayalet emir")); st.appendChild(el("span", null, "Son 24 saat: " + day.length)); box.appendChild(st);
+  const row = (lab, a, col) => { const d = el("div", "lq"); d.style.gridTemplateColumns = "90px 1fr 70px"; d.appendChild(el("span", null, lab)); d.appendChild(el("span", null, a.c + " emir · " + fmtUsd(a.n))); const x = el("span", "pct", ""); d.appendChild(x); d.style.color = col; return d; };
+  box.appendChild(row("Satış tarafı", sa, "var(--sell)")); box.appendChild(row("Alış tarafı", sb, "var(--buy)"));
+  let cmt, col = "var(--mute)";
+  if (hr.length < 3) cmt = hr.length ? "Şimdilik az sayıda hayalet emir var, belirgin bir oyun görünmüyor." : "Son 1 saatte hayalet emir yakalanmadı.";
+  else if (sa.n > sb.n * 2) { cmt = "Satış tarafında sahte duvarlar öne çıkıyor: fiyatı aşağı çekmek ya da küçük yatırımcıyı korkutup sattırmak için direnç gösteriliyor olabilir."; col = "var(--sell)"; }
+  else if (sb.n > sa.n * 2) { cmt = "Alış tarafında sahte duvarlar öne çıkıyor: güçlü destek varmış izlenimi verilip alıcı çekilmeye çalışılıyor olabilir."; col = "var(--buy)"; }
+  else cmt = "İki tarafta da hayalet emir var: defterde robot hareketliliği yüksek, duvarlara güvenme.";
+  const c = el("div", "zone", cmt); c.style.color = col; box.appendChild(c);
+  if (ghosts.length) { box.appendChild(el("div", "hd", "Son yakalananlar"));
+    ghosts.slice(0, 8).forEach((g) => { const r = el("div", "pl"); r.appendChild(el("span", "dot " + (g.side === "satış" ? "dn" : "up")));
+      const dv = el("div"); dv.appendChild(el("b", null, "$" + g.p.toFixed(4) + " " + g.side + " · " + fmtUsd(g.n)));
+      dv.appendChild(el("span", "sm", new Date(g.t).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) + " · " + g.life + " sn yaşadı · fiyata %" + g.dist.toFixed(1) + " uzaktaydı, dolmadan kayboldu")); r.appendChild(dv); box.appendChild(r); }); }
+  const mins = Math.round((Date.now() - ghStart) / 60000);
+  note.textContent = "Her " + GHOST_MS / 1000 + " sn emir defteri okunuyor (sayfa açıkken). Bu oturumda " + ghPolls + " okuma, " + mins + " dk. Sayfa kapalıyken izlenmez. Bu yalnızca davranış örüntüsüdür; emri kimin koyduğu bilinemez, kesin 'robot' kanıtı değildir.";
+}
+
 /* ================= Pozisyonlanma grafikleri ================= */
 
 /* Eşik çizgileri ve "şu an" durum metinleri */
@@ -1054,6 +1115,7 @@ const INFO2 = {
   "Kalabalık L/S (hesap)": "Long hesap sayısının short hesap sayısına oranı; çoğunluğu küçük yatırımcılardır. 1 üstü long ağırlıklı demektir. 1,5 üstü aşırı kalabalık long: ters yönde tasfiye riski. 0,8 altı kalabalık short: yukarı sıkışma ihtimali. Kalabalık sık yanıldığı için çoğu zaman ters sinyal olarak okunur.",
   "Kalabalık ve büyük oyuncu L/S": "Yeşil çizgi kalabalığın (küçük hesapların), mor çizgi en büyük hesapların long/short oranı. 1 üstü long, altı short ağırlığı. Kalabalık 1,5 üstündeyse aşırı long: ters yönde tasfiye riski. Büyükler 1,2 üstündeyse belirgin long. İki çizgi ayrışıyorsa dikkat: büyükler long kalabalık short ise yukarı ağırlık artar, tersi aşağı ağırlık. Not: iki oran farklı yöntemle hesaplanır (hesap sayısı ve pozisyon büyüklüğü), bu yüzden değerleri birebir kıyaslama, yönlerine ve eşiklerine bak.",
   "Emir defteri seyri": "Yeşil çizgi fiyatın ±%3 altındaki toplam alış emri, kırmızı çizgi ±%3 üstündeki toplam satış emri tutarı. Kırmızı çizgi düşüyorsa satış duvarı eriyor, yukarı çıkış kolaylaşıyor. Yeşil çizgi yükseliyorsa destek kalınlaşıyor. Yeşil kırmızıyı geçerse alıcılar baskın. Emirler hızla iptal edilebilir, tek başına işaret sayma.",
+  "sRobot": "Büyük bir emir defterine girip fiyat yaklaşmadan, kısa sürede geri çekiliyorsa buna hayalet emir (spoofing şüphesi) denir. Amaç genelde sahte bir duvar göstererek diğer yatırımcıları yanıltmaktır. Satış tarafında çok hayalet emir varsa aşağı baskı izlenimi, alış tarafında çoksa sahte destek izlenimi verilmeye çalışılıyor olabilir. Emri kimin koyduğu görünmez; burada yalnızca davranış örüntüsü yakalanır.",
   "Büyük oyuncu L/S (pozisyon)": "Binance'in en büyük hesaplarının pozisyon büyüklüğüne göre long/short oranı. 1,2 üstü büyükler long, 0,8 altı short. Kalabalıkla ters yöndeyse daha anlamlıdır: büyükler long, kalabalık short ise yukarı ağırlık artar; tersi aşağı ağırlık.",
   "Taker alış/satış": "Piyasa emriyle alanların hacminin, piyasa emriyle satanların hacmine oranı. 1 üstü alıcılar agresif demektir; 1,1 üstü belirgin alım baskısı, 0,9 altı satış baskısı. Fiyat yükselirken oran düşüyorsa yükseliş yoruluyor olabilir.",
   "TVL": "EVAA protokolüne yatırılan toplam varlık. Artış güven ve likidite girişi, hızlı düşüş çıkış demektir. Fiyat düşerken TVL sabit kalıyorsa kullanıcı sadakati güçlü; ikisi birlikte düşüyorsa zayıflık işaretidir.",
@@ -1101,6 +1163,7 @@ renderChips();
 loadMarket();
 loadFeed();
 wireSectionInfo();
+ghostRender(); ghostPoll(); setInterval(ghostPoll, GHOST_MS);
 loadBotStatus();
 setInterval(loadBotStatus, 5 * 60 * 1000);
 startLiqFeed();
