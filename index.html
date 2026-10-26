@@ -68,6 +68,14 @@
                  border-radius: 12px; }
   .err { color: var(--sell); }
   .foot { color: var(--mute); font-size: 12px; margin-top: 22px; text-align: center; }
+  .liq { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+  .lq { display: grid; grid-template-columns: 62px 1fr 54px; gap: 8px; align-items: center; font-size: 13px; padding: 3px 0; }
+  .lq .bar { height: 10px; border-radius: 5px; background: var(--line); overflow: hidden; }
+  .lq .bar i { display: block; height: 100%; }
+  .lq.up .bar i { background: var(--sell); } .lq.dn .bar i { background: var(--buy); }
+  .lq .pct { color: var(--mute); text-align: right; font-size: 12px; }
+  .lq.now { color: var(--text); font-weight: 650; border-top: 1px dashed var(--line); border-bottom: 1px dashed var(--line); margin: 4px 0; padding: 5px 0; }
+  .liq .hd { color: var(--mute); font-size: 12px; margin: 6px 0 2px; }
 </style>
 </head>
 <body>
@@ -84,6 +92,10 @@
   </div>
   <div class="grid" id="mGrid"></div>
   <div class="diag" id="diag"></div>
+
+  <h2>Likidasyon hedefleri (tahmini)</h2>
+  <div class="liq" id="liq">Yükleniyor…</div>
+  <div class="diag" id="liqNote"></div>
 
   <h2>Zincir hareketleri (BSC)</h2>
   <div class="grid" id="stats" style="margin-bottom:14px"></div>
@@ -504,11 +516,66 @@ async function loadFeed() {
   }
 }
 
+
+/* ================= Likidasyon hedefleri (Binance vadeli verisinden tahmin) =================
+   Her saatlik mumun hacmi o fiyattan açılan pozisyon sayılır; 10x/25x/50x/100x kaldıraçla
+   long/short likidasyon fiyatı hesaplanır. Fiyatın sonradan değmediği seviyeler "duran" sayılır. */
+async function loadLiq() {
+  const box = document.getElementById("liq"), note = document.getElementById("liqNote");
+  try {
+    const k = await getJson("https://fapi.binance.com/fapi/v1/klines?symbol=" + PERP + "&interval=1h&limit=720");
+    const c = k.map((x) => ({ h: +x[2], l: +x[3], cl: +x[4], v: +x[7] }));
+    const price = c[c.length - 1].cl;
+    // sonradan görülen en düşük/en yüksek (suffix)
+    const n = c.length, minAfter = new Array(n), maxAfter = new Array(n);
+    let mn = Infinity, mx = -Infinity;
+    for (let i = n - 1; i >= 0; i--) { minAfter[i] = mn; maxAfter[i] = mx; mn = Math.min(mn, c[i].l); mx = Math.max(mx, c[i].h); }
+    const LEV = [[10, 0.3], [25, 0.3], [50, 0.25], [100, 0.15]], MMR = 0.005;
+    const step = price * 0.01, bins = {};
+    for (let i = 0; i < n; i++) {
+      const e = (c[i].h + c[i].l + c[i].cl) / 3;
+      for (const [L, w] of LEV) {
+        const lg = e * (1 - 1 / L + MMR), sh = e * (1 + 1 / L - MMR);
+        if (lg < price && minAfter[i] > lg) { const b = Math.round(lg / step); bins[b] = (bins[b] || 0) + c[i].v * w; }
+        if (sh > price && maxAfter[i] < sh) { const b = Math.round(sh / step); bins[b] = (bins[b] || 0) + c[i].v * w; }
+      }
+    }
+    const rows = Object.keys(bins).map((b) => ({ p: +b * step, v: bins[b] }));
+    const top = (arr) => arr.sort((a, b) => b.v - a.v).slice(0, 5).sort((a, b) => b.p - a.p);
+    const up = top(rows.filter((r) => r.p > price)), dn = top(rows.filter((r) => r.p < price));
+    const max = Math.max(1, ...up.map((r) => r.v), ...dn.map((r) => r.v));
+    const upSum = rows.filter((r) => r.p > price).reduce((t, r) => t + r.v, 0);
+    const dnSum = rows.filter((r) => r.p < price).reduce((t, r) => t + r.v, 0);
+    const line = (r, cls) => {
+      const d = el("div", "lq " + cls);
+      d.appendChild(el("span", null, "$" + r.p.toFixed(3)));
+      const bar = el("div", "bar"); const i = document.createElement("i"); i.style.width = Math.max(4, r.v / max * 100) + "%"; bar.appendChild(i);
+      d.appendChild(bar);
+      d.appendChild(el("span", "pct", ((r.p / price - 1) * 100 >= 0 ? "+" : "") + ((r.p / price - 1) * 100).toFixed(0) + "%"));
+      return d;
+    };
+    box.textContent = "";
+    box.appendChild(el("div", "hd", "Yukarıda short likidasyonları (fiyat çekilirse tasfiye olur)"));
+    up.forEach((r) => box.appendChild(line(r, "up")));
+    const now = el("div", "lq now"); now.appendChild(el("span", null, "$" + price.toFixed(3))); now.appendChild(el("span", null, "şu anki fiyat")); now.appendChild(el("span", "pct", "")); box.appendChild(now);
+    box.appendChild(el("div", "hd", "Aşağıda long likidasyonları"));
+    dn.forEach((r) => box.appendChild(line(r, "dn")));
+    const tot = upSum + dnSum, upPct = tot ? Math.round(upSum / tot * 100) : 0;
+    note.textContent = "Likidite dağılımı: yukarıda %" + upPct + " / aşağıda %" + (100 - upPct) +
+      (upPct >= 55 ? " → yoğunluk yukarıda, çekim yönü yukarı olabilir" : upPct <= 45 ? " → yoğunluk aşağıda, çekim yönü aşağı olabilir" : " → dengeli") +
+      ". Binance EVAAUSDT, son 30 gün, model tahminidir (Coinglass değildir); yatırım tavsiyesi değildir.";
+  } catch (err) {
+    box.textContent = "Likidasyon verisi alınamadı (" + err.message + ")";
+  }
+}
+
 /* ================= Başlat ================= */
 renderStats();
 renderChips();
 loadMarket();
 loadFeed();
+loadLiq();
+setInterval(loadLiq, 5 * 60 * 1000);
 setInterval(loadMarket, MKT_REFRESH_MS);
 setInterval(loadFeed, FEED_REFRESH_MS);
 </script>
