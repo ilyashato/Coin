@@ -1,0 +1,18 @@
+{
+ "time": "2026-10-26T07:53:58.678Z",
+ "errors": [
+  "Transfer: eth_getLogs: Archive requests require a personal token. Get one at: https://www.allnodes.com/publicnode"
+ ],
+ "price": 0.515307692520496,
+ "scan": {
+  "from": 129831013,
+  "done": 129831012,
+  "latest": 129861013,
+  "calls": 6,
+  "error": "eth_getLogs: Archive requests require a personal token. Get one at: https://www.allnodes.com/publicnode"
+ },
+ "added": 0,
+ "total": 0,
+ "lastBlock": 129617001,
+ "rpc": "https://bsc-rpc.publicnode.com"
+}
