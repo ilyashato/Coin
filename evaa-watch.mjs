@@ -29,7 +29,7 @@ let rid = 0;
 const RPCS = (process.env.BSC_RPC || "https://bsc-rpc.publicnode.com,https://bsc-dataseed1.binance.org,https://1rpc.io/bnb,https://bsc.drpc.org")
   .split(",").map((x) => x.trim()).filter(Boolean);
 async function rpc(method, params) {
-  let last;
+  const errs = [];
   for (const url of RPCS) {
     try {
       const r = await fetch(url, {
@@ -40,9 +40,9 @@ async function rpc(method, params) {
       const j = await r.json();
       if (j.error) throw new Error(`${method}: ${j.error.message}`);
       return j.result;
-    } catch (e) { last = e; }
+    } catch (e) { errs.push(e.message); }
   }
-  throw last;
+  throw new Error([...new Set(errs)].join(" | "));
 }
 
 async function getPrice() {
@@ -97,7 +97,7 @@ async function poolTrades() {
 // 2) Cüzdandan cüzdana transferler (RPC Transfer olayları)
 // Dayanıklı tarama: aralık RPC limitini aşarsa küçültür, çok geride kalındıysa atlar,
 // hata olsa da o ana kadarki ilerlemeyi kaydeder (takılı kalmaz).
-const MAX_BACK = Number(process.env.MAX_BACK || 30000);  // en fazla bu kadar blok geriye bak
+const MAX_BACK = Number(process.env.MAX_BACK || 9000);  // en fazla bu kadar blok geriye bak
 const MAX_CALLS = Number(process.env.MAX_CALLS || 40);   // bir çalışmada en fazla getLogs çağrısı
 
 async function transfers(state, price) {
@@ -123,7 +123,7 @@ async function transfers(state, price) {
         fromBlock: "0x" + s.toString(16), toBlock: "0x" + e.toString(16),
       }]);
     } catch (err) {
-      if (/archive|too old|pruned|missing trie|historical/i.test(err.message)) {
+      if (/archive|too old|pruned|missing trie|historical|over \d+ blocks|not supported on free/i.test(err.message)) {
         // bu RPC eski blokları vermiyor: başlangıcı yakın tarafa taşı (aralığın yarısı kadar)
         const ns = Math.max(s + 1, latest - Math.max(300, Math.floor((latest - s) / 2)));
         console.log(`Eski blok reddedildi, başlangıç ${s} -> ${ns}`);
