@@ -3,6 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0b0f14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="EVAA">
 <title>EVAA Canlı Panel</title>
 <style>
   :root {
@@ -87,11 +90,23 @@
   .lv .k.long { color:var(--sell); font-weight:650; } .lv .k.short { color:var(--buy); font-weight:650; }
   .lv .u { text-align:right; font-weight:650; }
   .lvs { display:flex; gap:14px; font-size:13px; margin-bottom:6px; flex-wrap:wrap; }
+  html { scroll-behavior: smooth; } h2 { scroll-margin-top: 54px; }
+  .nav { position: sticky; top: 0; z-index: 9; display: flex; gap: 8px; overflow-x: auto; padding: 8px 0; margin: 0 0 6px; background: var(--bg); }
+  .nav a { flex: none; color: var(--mute); border: 1px solid var(--line); border-radius: 999px; padding: 6px 13px; font-size: 13px; text-decoration: none; background: var(--card); }
+  .pl { display:grid; grid-template-columns: 12px 1fr; gap:8px; font-size:13px; padding:6px 0; border-bottom:1px solid var(--line); align-items:start; }
+  .pl:last-child { border-bottom:0; } .pl .dot { width:9px; height:9px; border-radius:50%; margin-top:5px; background:var(--mute); }
+  .pl .dot.up { background: var(--buy); } .pl .dot.dn { background: var(--sell); } .pl b { font-weight:650; } .pl .sm { color:var(--mute); font-size:12px; display:block; }
+  .verdict { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; }
+  .verdict .v { font-size:18px; font-weight:700; } .gauge { height:8px; border-radius:4px; background: linear-gradient(90deg, var(--sell), var(--line) 50%, var(--buy)); position:relative; margin:4px 0 8px; }
+  .gauge i { position:absolute; top:-3px; width:4px; height:14px; border-radius:2px; background:var(--text); }
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>EVAA Canlı Panel</h1>
+  <nav class="nav" id="nav">
+    <a href="#sNabiz">Nabız</a><a href="#sLiq">Likidasyon</a><a href="#sDuvar">Duvarlar</a><a href="#sCanli">Canlı</a><a href="#sPoz">Pozisyon</a><a href="#sSeyir">Seyir</a><a href="#sZincir">Zincir</a>
+  </nav>
   <div class="sub" id="sub">Yükleniyor…</div>
   <button class="refresh" id="refreshBtn" type="button">⟳ Yenile</button>
 
@@ -105,20 +120,33 @@
   <div class="grid" id="mGrid"></div>
   <div class="diag" id="diag"></div>
 
-  <h2>Likidasyon hedefleri (tahmini)</h2>
+  <h2 id="sNabiz">Piyasa nabzı</h2>
+  <div class="liq" id="pulse">Veriler toplanıyor…</div>
+  <div class="diag" id="pulseNote"></div>
+
+  <h2 id="sLiq">Likidasyon hedefleri (tahmini)</h2>
   <div class="chips" id="liqChips"></div>
   <div class="liq" id="liq">Yükleniyor…</div>
   <div class="diag" id="liqNote"></div>
 
-  <h2>Canlı likidasyonlar</h2>
+  <h2 id="sDuvar">Emir defteri duvarları</h2>
+  <div class="liq" id="wallBox">Yükleniyor…</div>
+  <div class="diag" id="wallNote"></div>
+
+  <h2 id="sCanli">Canlı likidasyonlar</h2>
   <div class="liq" id="lvBox">Bağlanıyor…</div>
   <div class="diag" id="lvNote"></div>
 
-  <h2>TVL ve FDV seyri</h2>
+  <h2 id="sPoz">Pozisyonlanma (vadeli işlem)</h2>
+  <div class="chips" id="posChips"></div>
+  <div class="liq" id="posBox">Yükleniyor…</div>
+  <div class="diag" id="posNote"></div>
+
+  <h2 id="sSeyir">TVL ve FDV seyri</h2>
   <div class="chips" id="chChips"></div>
   <div class="liq" id="chBox">Yükleniyor…</div>
 
-  <h2>Zincir hareketleri (BSC)</h2>
+  <h2 id="sZincir">Zincir hareketleri (BSC)</h2>
   <div class="grid" id="stats" style="margin-bottom:14px"></div>
   <div class="chips" id="chips"></div>
   <div id="list"></div>
@@ -592,6 +620,8 @@ async function loadLiq() {
     box.appendChild(el("div", "hd", "Aşağıda long likidasyonları"));
     dn.forEach((r) => box.appendChild(line(r, "dn")));
     const tot = upSum + dnSum, upPct = tot ? Math.round(upSum / tot * 100) : 0;
+    const bigUp = rows.filter((r) => r.p > price).sort((a, b) => b.v - a.v)[0], bigDn = rows.filter((r) => r.p < price).sort((a, b) => b.v - a.v)[0];
+    P.liq = { price: price, upPct: upPct, bigUp: bigUp, bigDn: bigDn }; renderPulse();
     note.textContent = "Likidite dağılımı: yukarıda %" + upPct + " / aşağıda %" + (100 - upPct) +
       (upPct >= 55 ? " → yoğunluk yukarıda, çekim yönü yukarı olabilir" : upPct <= 45 ? " → yoğunluk aşağıda, çekim yönü aşağı olabilir" : " → dengeli") +
       ". Binance EVAAUSDT, seçili aralık (" + LIQ_RANGES[liqIdx][0] + "), model tahminidir (Coinglass değildir); yatırım tavsiyesi değildir.";
@@ -616,7 +646,8 @@ function fmtBig(v) { return v >= 1e9 ? "$" + (v / 1e9).toFixed(2) + " Mr" : v >=
 const fmtD = (x) => new Date(x).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
 let allCharts = [];
 function nearest(pts, t) { let lo = 0, hi = pts.length - 1; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (pts[m].t <= t) lo = m; else hi = m; } return Math.abs(pts[lo].t - t) <= Math.abs(pts[hi].t - t) ? pts[lo] : pts[hi]; }
-function lineChart(title, pts, color) {
+function lineChart(title, pts, color, opts) {
+  opts = opts || {}; const fmt = opts.fmt || fmtBig, group = opts.group || allCharts;
   const w = el("div", "chart");
   const first = pts[0].v, last = pts[pts.length - 1].v;
   const t = el("div", "t"), tl = el("b", null, ""), tr = el("span", null, ""); t.appendChild(tl); t.appendChild(tr); w.appendChild(t);
@@ -630,28 +661,28 @@ function lineChart(title, pts, color) {
   const cur = document.createElementNS(NS, "line"); cur.setAttribute("y1", 0); cur.setAttribute("y2", H); cur.setAttribute("stroke", "#8a97a6"); cur.setAttribute("stroke-width", "1"); cur.setAttribute("vector-effect", "non-scaling-stroke"); cur.style.display = "none";
   svg.appendChild(path); svg.appendChild(cur); w.appendChild(svg);
   const ax = el("div", "ax");
-  ax.appendChild(el("span", null, fmtD(t0) + " · min " + fmtBig(mn))); ax.appendChild(el("span", null, "max " + fmtBig(mx) + " · " + fmtD(t1))); w.appendChild(ax);
+  ax.appendChild(el("span", null, fmtD(t0) + " · min " + fmt(mn))); ax.appendChild(el("span", null, "max " + fmt(mx) + " · " + fmtD(t1))); w.appendChild(ax);
   const show = (pt) => {
     const v = pt ? pt.v : last, ch = (v / first - 1) * 100;
-    tl.textContent = title + "  " + fmtBig(v) + (pt ? "  · " + fmtD(pt.t) : "");
-    tr.textContent = (ch >= 0 ? "+" : "") + ch.toFixed(1) + "%"; tr.style.color = ch >= 0 ? "var(--buy)" : "var(--sell)";
+    tl.textContent = title + "  " + fmt(v) + (pt ? "  · " + fmtD(pt.t) : "");
+    if (opts.pct === false) { tr.textContent = ""; } else { tr.textContent = (ch >= 0 ? "+" : "") + ch.toFixed(1) + "%"; tr.style.color = ch >= 0 ? "var(--buy)" : "var(--sell)"; }
     if (pt) { cur.setAttribute("x1", X(pt.t)); cur.setAttribute("x2", X(pt.t)); cur.style.display = ""; } else cur.style.display = "none";
   };
   show(null);
-  allCharts.push({ svg, pts, t0, t1, show });
+  group.push({ svg, pts, t0, t1, show });
   return w;
 }
-function wireCharts() {
+function wireCharts(group) {
   const move = (e, c) => {
     const r = c.svg.getBoundingClientRect(), f = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), tt = c.t0 + f * (c.t1 - c.t0);
-    allCharts.forEach((o) => o.show(nearest(o.pts, tt)));
+    group.forEach((o) => o.show(nearest(o.pts, tt)));
   };
-  allCharts.forEach((c) => {
+  group.forEach((c) => {
     c.svg.style.touchAction = "pan-y";
     c.svg.addEventListener("pointerdown", (e) => move(e, c));
     c.svg.addEventListener("pointermove", (e) => move(e, c));
-    c.svg.addEventListener("pointerleave", () => allCharts.forEach((o) => o.show(null)));
-    c.svg.addEventListener("pointerup", () => setTimeout(() => allCharts.forEach((o) => o.show(null)), 2500));
+    c.svg.addEventListener("pointerleave", () => group.forEach((o) => o.show(null)));
+    c.svg.addEventListener("pointerup", () => setTimeout(() => group.forEach((o) => o.show(null)), 2500));
   });
 }
 function drawCharts() {
@@ -665,7 +696,7 @@ function drawCharts() {
     else box.appendChild(el("div", "hd", n + ": veri yok"));
   });
   if (!any) box.appendChild(el("div", "hd", "Grafik verisi alınamadı"));
-  else { box.appendChild(el("div", "hd", "Parmağını grafiğin üstünde sürükle: tarih, TVL, FDV ve fiyat aynı anda görünür.")); wireCharts(); }
+  else { box.appendChild(el("div", "hd", "Parmağını grafiğin üstünde sürükle: tarih, TVL, FDV ve fiyat aynı anda görünür.")); wireCharts(allCharts); }
 }
 async function loadCharts() {
   const res = await Promise.allSettled([
@@ -742,12 +773,165 @@ function startLiqFeed() {
   setInterval(lvRender, 60000);
 }
 
+
+/* ================= Ortak durum + Piyasa nabzı ================= */
+const P = { liq: null, pos: null, wall: null, fng: null };
+function sig(score, title, detail) { return { score: score, title: title, detail: detail }; }
+function renderPulse() {
+  const box = document.getElementById("pulse"); if (!box) return;
+  const S = [];
+  const pos = P.pos, wall = P.wall, liq = P.liq;
+  if (pos) {
+    if (ok(pos.funding)) {
+      const f = pos.funding;
+      if (f > 0.03) S.push(sig(-0.5, "Fonlama yüksek (" + f.toFixed(3) + "%)", "Long'lar short'lara ödeme yapıyor, kalabalık long tarafı pahalıya taşıyor; düzeltme riski artar."));
+      else if (f < -0.01) S.push(sig(0.5, "Fonlama negatif (" + f.toFixed(3) + "%)", "Short'lar ödüyor; fiyat yükselirse short squeeze ihtimali var."));
+      else S.push(sig(0, "Fonlama nötr (" + f.toFixed(3) + "%)", "Taraflar arasında belirgin bir baskı yok."));
+    }
+    if (ok(pos.oiCh) && ok(pos.pxCh)) {
+      const up = pos.pxCh >= 0, oiUp = pos.oiCh >= 0;
+      const t = "Açık pozisyon " + (oiUp ? "+" : "") + pos.oiCh.toFixed(1) + "% · fiyat " + (up ? "+" : "") + pos.pxCh.toFixed(1) + "% (24s)";
+      if (oiUp && up) S.push(sig(0.5, t, "Yeni para yükselişe katılıyor, trend güçlü."));
+      else if (oiUp && !up) S.push(sig(-0.5, t, "Yeni short'lar açılıyor, düşüş baskısı güçlü."));
+      else if (!oiUp && up) S.push(sig(0.1, t, "Yükseliş daha çok short kapatmaktan geliyor, kalıcılığı zayıf olabilir."));
+      else S.push(sig(-0.1, t, "Long'lar pozisyon kapatıyor; satış baskısı kapanışlardan geliyor."));
+    }
+    if (ok(pos.crowd)) {
+      const c = pos.crowd;
+      if (c > 1.5) S.push(sig(-0.4, "Kalabalık long ağırlıklı (L/S " + c.toFixed(2) + ")", "Küçük hesapların çoğu long; ters yönde tasfiye avı riski."));
+      else if (c < 0.8) S.push(sig(0.4, "Kalabalık short ağırlıklı (L/S " + c.toFixed(2) + ")", "Küçük hesapların çoğu short; yukarı sıkışma ihtimali."));
+      else S.push(sig(0, "Kalabalık dengeli (L/S " + c.toFixed(2) + ")", ""));
+    }
+    if (ok(pos.top)) {
+      const c = pos.top;
+      if (c > 1.2) S.push(sig(0.5, "Büyük oyuncular long ağırlıklı (" + c.toFixed(2) + ")", "En büyük hesapların pozisyon dağılımı long tarafta."));
+      else if (c < 0.8) S.push(sig(-0.5, "Büyük oyuncular short ağırlıklı (" + c.toFixed(2) + ")", "En büyük hesapların pozisyon dağılımı short tarafta."));
+      else S.push(sig(0, "Büyük oyuncular dengeli (" + c.toFixed(2) + ")", ""));
+    }
+    if (ok(pos.taker)) {
+      const c = pos.taker;
+      if (c > 1.1) S.push(sig(0.4, "Agresif alıcılar önde (alış/satış " + c.toFixed(2) + ")", "Son 24 saatte piyasa emriyle alanlar satanlardan fazla."));
+      else if (c < 0.9) S.push(sig(-0.4, "Agresif satıcılar önde (alış/satış " + c.toFixed(2) + ")", "Son 24 saatte piyasa emriyle satanlar alanlardan fazla."));
+      else S.push(sig(0, "Alış/satış baskısı dengeli (" + c.toFixed(2) + ")", ""));
+    }
+  }
+  if (liq && liq.bigUp && liq.bigDn) {
+    const pu = (liq.bigUp.p / liq.price - 1) * 100, pd = (liq.bigDn.p / liq.price - 1) * 100;
+    const s0 = liq.upPct >= 60 ? 0.3 : liq.upPct <= 40 ? -0.3 : 0;
+    S.push(sig(s0, "Likidite: yukarıda %" + liq.upPct + " / aşağıda %" + (100 - liq.upPct),
+      "En güçlü kümeler: yukarıda $" + liq.bigUp.p.toFixed(3) + " (+%" + pu.toFixed(0) + "), aşağıda $" + liq.bigDn.p.toFixed(3) + " (−%" + Math.abs(pd).toFixed(0) + ")."));
+  }
+  if (wall && ok(wall.ratio)) {
+    const r = wall.ratio;
+    if (r > 1.3) S.push(sig(0.3, "Emir defteri alıcı ağırlıklı (" + r.toFixed(2) + "x)", "±%3 içinde alış emirleri satışlardan fazla; destek daha dolu."));
+    else if (r < 0.77) S.push(sig(-0.3, "Emir defteri satıcı ağırlıklı (" + r.toFixed(2) + "x)", "±%3 içinde satış emirleri alışlardan fazla; direnç daha dolu."));
+    else S.push(sig(0, "Emir defteri dengeli (" + r.toFixed(2) + "x)", ""));
+  }
+  if (P.fng) S.push(sig(P.fng.v <= 25 ? 0.1 : P.fng.v >= 75 ? -0.1 : 0, "Korku/Hırs endeksi: " + P.fng.v + " (" + P.fng.c + ")", "Genel kripto piyasası duyarlılığı."));
+  box.textContent = "";
+  if (!S.length) { box.textContent = "Veriler toplanıyor…"; return; }
+  const avg = S.reduce((t, x) => t + x.score, 0) / S.length;
+  const label = avg >= 0.2 ? "Yukarı eğilimli" : avg <= -0.2 ? "Aşağı eğilimli" : "Kararsız / dengeli";
+  const vd = el("div", "verdict"); const v = el("span", "v", label); v.style.color = avg >= 0.2 ? "var(--buy)" : avg <= -0.2 ? "var(--sell)" : "var(--text)";
+  vd.appendChild(v); vd.appendChild(el("span", "m", S.length + " sinyal · skor " + (avg >= 0 ? "+" : "") + avg.toFixed(2))); box.appendChild(vd);
+  const g = el("div", "gauge"), mk = document.createElement("i"); mk.style.left = "calc(" + Math.round((Math.max(-1, Math.min(1, avg * 2)) + 1) * 50) + "% - 2px)"; g.appendChild(mk); box.appendChild(g);
+  S.sort((a, b) => Math.abs(b.score) - Math.abs(a.score)).forEach((x) => {
+    const r = el("div", "pl"); r.appendChild(el("span", "dot " + (x.score > 0.05 ? "up" : x.score < -0.05 ? "dn" : "")));
+    const d = el("div"); d.appendChild(el("b", null, x.title)); if (x.detail) d.appendChild(el("span", "sm", x.detail)); r.appendChild(d); box.appendChild(r);
+  });
+  document.getElementById("pulseNote").textContent = "Sinyaller Binance vadeli verisinden otomatik yorumlanır; kural tabanlı bir özettir, tahmin ya da yatırım tavsiyesi değildir.";
+}
+
+/* ================= Emir defteri duvarları ================= */
+async function loadWalls() {
+  const box = document.getElementById("wallBox"), note = document.getElementById("wallNote");
+  try {
+    const d = await getJson("https://fapi.binance.com/fapi/v1/depth?symbol=" + PERP + "&limit=1000");
+    const bids = d.bids.map((x) => [+x[0], +x[1]]), asks = d.asks.map((x) => [+x[0], +x[1]]);
+    const mid = (bids[0][0] + asks[0][0]) / 2, step = mid * 0.005, B = {}, A = {};
+    bids.forEach(([p, q]) => { if (p > mid * 0.9) { const k = Math.floor(p / step); B[k] = (B[k] || 0) + p * q; } });
+    asks.forEach(([p, q]) => { if (p < mid * 1.1) { const k = Math.floor(p / step); A[k] = (A[k] || 0) + p * q; } });
+    const toRows = (o) => Object.keys(o).map((k) => ({ p: (+k + 0.5) * step, v: o[k] }));
+    const bR = toRows(B), aR = toRows(A);
+    const near = (rows, sign) => rows.filter((r) => Math.abs(r.p / mid - 1) <= 0.03).reduce((t, r) => t + r.v, 0);
+    const bN = near(bR), aN = near(aR);
+    P.wall = { ratio: aN > 0 ? bN / aN : null }; renderPulse();
+    const top = (rows) => rows.sort((x, y) => y.v - x.v).slice(0, 4).sort((x, y) => y.p - x.p);
+    const aT = top(aR), bT = top(bR), mx = Math.max(1, ...aT.map((r) => r.v), ...bT.map((r) => r.v));
+    const line = (r, cls) => { const x = el("div", "lq " + cls); x.appendChild(el("span", null, "$" + r.p.toFixed(3)));
+      const bar = el("div", "bar"), i = document.createElement("i"); i.style.width = Math.max(4, r.v / mx * 100) + "%"; bar.appendChild(i); x.appendChild(bar);
+      x.appendChild(el("span", "pct", fmtBig(r.v))); return x; };
+    box.textContent = "";
+    box.appendChild(el("div", "hd", "Satış duvarları (direnç) · ±%10"));
+    aT.forEach((r) => box.appendChild(line(r, "up")));
+    const now = el("div", "lq now"); now.appendChild(el("span", null, "$" + mid.toFixed(3))); now.appendChild(el("span", null, "alıcı/satıcı (±%3): " + (aN > 0 ? (bN / aN).toFixed(2) : "–") + "x")); now.appendChild(el("span", "pct", "")); box.appendChild(now);
+    box.appendChild(el("div", "hd", "Alış duvarları (destek)"));
+    bT.forEach((r) => box.appendChild(line(r, "dn")));
+    note.textContent = "Binance EVAAUSDT vadeli emir defteri (ilk 1000 kademe), %0,5'lik fiyat dilimlerinde toplanmıştır. Büyük duvarlar emir iptaliyle kaybolabilir; kesin destek/direnç sayılmaz.";
+  } catch (err) { box.textContent = "Emir defteri alınamadı (" + err.message + ")"; }
+}
+
+/* ================= Pozisyonlanma grafikleri ================= */
+const POS_RANGES = [["1G", 1], ["3G", 3], ["7G", 7], ["Tümü", 0]];
+let posIdx = 2, posData = null, posCharts = [];
+function renderPosChips() {
+  const box = document.getElementById("posChips"); box.textContent = "";
+  POS_RANGES.forEach((r, i) => { const c = el("button", "chip" + (i === posIdx ? " on" : ""), r[0]); c.onclick = () => { posIdx = i; renderPosChips(); drawPos(); }; box.appendChild(c); });
+}
+const fPct = (v) => (v >= 0 ? "" : "−") + Math.abs(v).toFixed(4) + "%";
+const fRat = (v) => v.toFixed(2);
+function drawPos() {
+  const box = document.getElementById("posBox"); box.textContent = ""; posCharts = [];
+  if (!posData) return;
+  const days = POS_RANGES[posIdx][1], cut = days ? Date.now() - days * 864e5 : 0;
+  let any = false;
+  [["Açık pozisyon (OI)", posData.oi, "#4c9aff", fmtBig, true], ["Fonlama oranı", posData.fr, "#f5b13d", fPct, false],
+   ["Kalabalık L/S (hesap)", posData.ga, "#2fbf71", fRat, false], ["Büyük oyuncu L/S (pozisyon)", posData.tp, "#c084fc", fRat, false],
+   ["Taker alış/satış", posData.tk, "#ef5b5b", fRat, false]].forEach(([n, arr, col, fmt, pct]) => {
+    const pts = (arr || []).filter((p) => p.t >= cut);
+    if (pts.length > 1) { box.appendChild(lineChart(n, pts, col, { group: posCharts, fmt: fmt, pct: pct })); any = true; }
+    else box.appendChild(el("div", "hd", n + ": veri yok"));
+  });
+  if (any) { box.appendChild(el("div", "hd", "Grafikleri sürükle: aynı saatteki tüm değerler birlikte görünür. L/S 1'in üstü long, altı short ağırlığı demek.")); wireCharts(posCharts); }
+}
+async function loadPos() {
+  const f = "https://fapi.binance.com/futures/data/", q = "?symbol=" + PERP + "&period=1h&limit=500";
+  const res = await Promise.allSettled([
+    getJson(f + "openInterestHist" + q), getJson("https://fapi.binance.com/fapi/v1/fundingRate?symbol=" + PERP + "&limit=100"),
+    getJson(f + "globalLongShortAccountRatio" + q), getJson(f + "topLongShortPositionRatio" + q), getJson(f + "takerlongshortRatio" + q),
+    getJson("https://fapi.binance.com/fapi/v1/ticker/24hr?symbol=" + PERP), fetchFng()
+  ]);
+  const v = (i) => (res[i].status === "fulfilled" && Array.isArray(res[i].value) ? res[i].value : null);
+  const map = (a, fn) => (a ? a.map(fn).filter((x) => ok(x.v) && ok(x.t)) : []);
+  posData = {
+    oi: map(v(0), (x) => ({ t: +x.timestamp, v: +x.sumOpenInterestValue })),
+    fr: map(v(1), (x) => ({ t: +x.fundingTime, v: +x.fundingRate * 100 })),
+    ga: map(v(2), (x) => ({ t: +x.timestamp, v: +x.longShortRatio })),
+    tp: map(v(3), (x) => ({ t: +x.timestamp, v: +x.longShortRatio })),
+    tk: map(v(4), (x) => ({ t: +x.timestamp, v: +x.buySellRatio }))
+  };
+  const last = (a) => (a.length ? a[a.length - 1].v : null);
+  const avgLast = (a, n) => { const z = a.slice(-n); return z.length ? z.reduce((t, x) => t + x.v, 0) / z.length : null; };
+  const oi = posData.oi, oiCh = oi.length > 25 ? (oi[oi.length - 1].v / oi[oi.length - 25].v - 1) * 100 : null;
+  const tick = res[5].status === "fulfilled" ? res[5].value : null;
+  P.pos = { funding: last(posData.fr), oiCh: oiCh, pxCh: tick ? +tick.priceChangePercent : null, crowd: last(posData.ga), top: last(posData.tp), taker: avgLast(posData.tk, 24) };
+  if (res[6].status === "fulfilled") P.fng = res[6].value;
+  drawPos(); renderPulse();
+  const bad = ["OI", "fonlama", "kalabalık L/S", "büyük oyuncu L/S", "taker"].filter((n, i) => !v(i));
+  document.getElementById("posNote").textContent = bad.length ? "Alınamayan veriler: " + bad.join(", ") + " (Binance bu sembol için sunmuyor olabilir)." : "Kaynak: Binance vadeli istatistikleri, saatlik (son ~3 hafta).";
+}
+
 /* ================= Başlat ================= */
 renderStats();
 renderChips();
 loadMarket();
 loadFeed();
 startLiqFeed();
+renderPosChips();
+loadPos();
+loadWalls();
+setInterval(loadPos, 5 * 60 * 1000);
+setInterval(loadWalls, 60 * 1000);
 renderLiqChips();
 renderChChips();
 loadCharts();
@@ -756,7 +940,7 @@ setInterval(loadCharts, 10 * 60 * 1000);
 setInterval(loadLiq, 5 * 60 * 1000);
 document.getElementById("refreshBtn").onclick = async function () {
   const b = this; b.disabled = true; b.textContent = "Yenileniyor…";
-  try { await Promise.allSettled([loadMarket(), loadFeed(), loadLiq(), loadCharts()]); } finally { b.disabled = false; b.textContent = "⟳ Yenile"; }
+  try { await Promise.allSettled([loadMarket(), loadFeed(), loadLiq(), loadCharts(), loadPos(), loadWalls()]); } finally { b.disabled = false; b.textContent = "⟳ Yenile"; }
 };
 setInterval(loadMarket, MKT_REFRESH_MS);
 setInterval(loadFeed, FEED_REFRESH_MS);
