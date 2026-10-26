@@ -26,15 +26,23 @@ const topicToAddr = (t) => ("0x" + t.slice(26)).toLowerCase();
 const tagsFor = (...addrs) => addrs.filter((a) => WATCH[a]).map((a) => "izleme: " + WATCH[a]);
 
 let rid = 0;
+const RPCS = (process.env.BSC_RPC || "https://bsc-rpc.publicnode.com,https://bsc-dataseed1.binance.org,https://1rpc.io/bnb,https://bsc.drpc.org")
+  .split(",").map((x) => x.trim()).filter(Boolean);
 async function rpc(method, params) {
-  const r = await fetch(RPC, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ jsonrpc: "2.0", id: ++rid, method, params }),
-  });
-  const j = await r.json();
-  if (j.error) throw new Error(`${method}: ${j.error.message}`);
-  return j.result;
+  let last;
+  for (const url of RPCS) {
+    try {
+      const r = await fetch(url, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: ++rid, method, params }),
+      });
+      const j = await r.json();
+      if (j.error) throw new Error(`${method}: ${j.error.message}`);
+      return j.result;
+    } catch (e) { last = e; }
+  }
+  throw last;
 }
 
 async function getPrice() {
@@ -115,6 +123,13 @@ async function transfers(state, price) {
         fromBlock: "0x" + s.toString(16), toBlock: "0x" + e.toString(16),
       }]);
     } catch (err) {
+      if (/archive|too old|pruned|missing trie|historical/i.test(err.message)) {
+        // bu RPC eski blokları vermiyor: başlangıcı yakın tarafa taşı (aralığın yarısı kadar)
+        const ns = Math.max(s + 1, latest - Math.max(300, Math.floor((latest - s) / 2)));
+        console.log(`Eski blok reddedildi, başlangıç ${s} -> ${ns}`);
+        if (ns > latest - 300 && s >= latest - 300) { error = err.message; break; }
+        s = ns; continue;
+      }
       if (chunk > 250) { chunk = Math.max(250, Math.floor(chunk / 2)); continue; }  // aralığı küçült
       error = err.message;
       break;
@@ -180,7 +195,7 @@ async function main() {
   feed.sort((a, b) => new Date(a.time) - new Date(b.time));
   fs.writeFileSync(OUT, JSON.stringify(feed.slice(-MAX_KEEP), null, 2));
   fs.writeFileSync(STATE, JSON.stringify(state));
-  status.added = added; status.total = feed.length; status.lastBlock = state.lastBlock || null; status.rpc = RPC;
+  status.added = added; status.total = feed.length; status.lastBlock = state.lastBlock || null; status.rpc = RPCS[0];
   fs.writeFileSync(STATUS, JSON.stringify(status, null, 1));
   console.log(`Yeni: ${added}, toplam: ${feed.length}${price ? `, fiyat: $${price}` : ""}`);
 }

@@ -27,7 +27,7 @@ jobs:
         env:
           MIN_USD: "5000"
           WATCH_MIN_USD: "1000"
-          BSC_RPC: "https://bsc-rpc.publicnode.com"
+          BSC_RPC: "https://bsc-rpc.publicnode.com,https://bsc-dataseed1.binance.org,https://1rpc.io/bnb,https://bsc.drpc.org"
           MAX_BACK: "30000"
           STATUS: data/evaa-status.json
           OUT: data/evaa-feed.json
