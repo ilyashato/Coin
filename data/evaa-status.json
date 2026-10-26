@@ -1,18 +1,16 @@
 {
- "time": "2026-10-26T07:54:44.709Z",
- "errors": [
-  "Transfer: eth_getLogs: ranges over 10000 blocks are not supported on free plan"
- ],
+ "time": "2026-10-26T07:55:23.478Z",
+ "errors": [],
  "price": 0.515307692520496,
  "scan": {
-  "from": 129831115,
-  "done": 129831114,
-  "latest": 129861115,
-  "calls": 6,
-  "error": "eth_getLogs: ranges over 10000 blocks are not supported on free plan"
+  "from": 129852203,
+  "done": 129861203,
+  "latest": 129861203,
+  "calls": 2,
+  "error": null
  },
  "added": 0,
  "total": 0,
- "lastBlock": 129617001,
+ "lastBlock": 129861203,
  "rpc": "https://bsc-rpc.publicnode.com"
 }
