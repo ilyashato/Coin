@@ -2158,5 +2158,17 @@
     "evaa": 5861.90927236,
     "usd": 9249,
     "tags": []
+  },
+  {
+    "key": "0xc77b1235b2f3c97a0a5e91d77afd0d7c31a1427c41b7c63e2310dfebac49ccf4:82",
+    "type": "transfer",
+    "chain": "bsc",
+    "time": "2026-11-04T21:10:03.000Z",
+    "hash": "0xc77b1235b2f3c97a0a5e91d77afd0d7c31a1427c41b7c63e2310dfebac49ccf4",
+    "from": "0x53f78a071d04224b8e254e243fffc6d9f2f3fa23",
+    "to": "0xb8e6d31e7b212b2b7250ee9c26c56cebbfbe6b23",
+    "evaa": 55000,
+    "usd": 87529,
+    "tags": []
   }
 ]
