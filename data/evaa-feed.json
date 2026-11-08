@@ -2602,5 +2602,29 @@
     "evaa": 6430.058400000001,
     "usd": 8435,
     "tags": []
+  },
+  {
+    "key": "0x1368a040834a7aa3b3b64472b4fbd189460a633f7ba1f713fb8d9498381e1d1d:79",
+    "type": "transfer",
+    "chain": "bsc",
+    "time": "2026-11-08T13:46:24.000Z",
+    "hash": "0x1368a040834a7aa3b3b64472b4fbd189460a633f7ba1f713fb8d9498381e1d1d",
+    "from": "0x53f78a071d04224b8e254e243fffc6d9f2f3fa23",
+    "to": "0xfc033c22002d22b10033e788b98ae3294b5133ca",
+    "evaa": 47508.262443019994,
+    "usd": 56546,
+    "tags": []
+  },
+  {
+    "key": "0x2eac188693e3de37b0536e6d0df02196761e49c357446bd0f7dc3126f7404ad0:314",
+    "type": "transfer",
+    "chain": "bsc",
+    "time": "2026-11-08T14:07:59.000Z",
+    "hash": "0x2eac188693e3de37b0536e6d0df02196761e49c357446bd0f7dc3126f7404ad0",
+    "from": "0x866db30d0f272f90cbf80a55ae8eabd3cff2dd43",
+    "to": "0x0d0707963952f2fba59dd06f2b425ace40b492fe",
+    "evaa": 6779.21,
+    "usd": 8069,
+    "tags": []
   }
 ]
