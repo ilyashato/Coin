@@ -1,16 +1,16 @@
 {
- "time": "2026-11-11T09:53:33.902Z",
+ "time": "2026-11-11T17:35:04.942Z",
  "errors": [],
- "price": 1.07760602251612,
+ "price": 1.06367857735711,
  "scan": {
-  "from": 132938650,
-  "done": 132947650,
-  "latest": 132947650,
+  "from": 133000160,
+  "done": 133009160,
+  "latest": 133009160,
   "calls": 2,
   "error": null
  },
  "added": 0,
  "total": 228,
- "lastBlock": 132947650,
+ "lastBlock": 133009160,
  "rpc": "https://bsc-rpc.publicnode.com"
 }
