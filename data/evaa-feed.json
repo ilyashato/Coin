@@ -3622,5 +3622,77 @@
     "evaa": 2454.8135977239995,
     "usd": 6304,
     "tags": []
+  },
+  {
+    "key": "0x7ee68a32272e53b32d8d99c9e019b8c38316855a25c31cfef176602bd1ed7935:168",
+    "type": "transfer",
+    "chain": "bsc",
+    "time": "2026-11-15T22:05:46.000Z",
+    "hash": "0x7ee68a32272e53b32d8d99c9e019b8c38316855a25c31cfef176602bd1ed7935",
+    "from": "0xccb5e080c38e4e7a1c6437db53bcbe016e45b9db",
+    "to": "0x17990b4f73ab863f16b4fe3fab984b7d44bc948d",
+    "evaa": 2889.948508774205,
+    "usd": 8048,
+    "tags": []
+  },
+  {
+    "key": "0xce4fb28e3b5ca218cc26d59a76ee449e0c9c629be936cf07df75656ed80e5592:88",
+    "type": "transfer",
+    "chain": "bsc",
+    "time": "2026-11-15T22:06:58.000Z",
+    "hash": "0xce4fb28e3b5ca218cc26d59a76ee449e0c9c629be936cf07df75656ed80e5592",
+    "from": "0x17990b4f73ab863f16b4fe3fab984b7d44bc948d",
+    "to": "0xccb5e080c38e4e7a1c6437db53bcbe016e45b9db",
+    "evaa": 2889.948508774205,
+    "usd": 8048,
+    "tags": []
+  },
+  {
+    "key": "0x6d0e0e3f6da423d8e7e5087432584993cff4d4f76d079910d084e1be70089e2a:264",
+    "type": "transfer",
+    "chain": "bsc",
+    "time": "2026-11-15T22:10:02.000Z",
+    "hash": "0x6d0e0e3f6da423d8e7e5087432584993cff4d4f76d079910d084e1be70089e2a",
+    "from": "0xf975e7e240c59146e67971e2aa5497f0f22441ff",
+    "to": "0x653dd7677aea3030eab68c97ed3594bacf560158",
+    "evaa": 4746.63517,
+    "usd": 13218,
+    "tags": []
+  },
+  {
+    "key": "0x1bbf22c2a42176d8df1d4eea83587eac818a2d5389a48587fcda9e4bbb9bbed7:205",
+    "type": "transfer",
+    "chain": "bsc",
+    "time": "2026-11-15T22:11:59.000Z",
+    "hash": "0x1bbf22c2a42176d8df1d4eea83587eac818a2d5389a48587fcda9e4bbb9bbed7",
+    "from": "0x653dd7677aea3030eab68c97ed3594bacf560158",
+    "to": "0x73d8bd54f7cf5fab43fe4ef40a62d390644946db",
+    "evaa": 4746.63517,
+    "usd": 13218,
+    "tags": []
+  },
+  {
+    "key": "0xe4867e9974ad510911af3cec2537c899e050ec8df5e13507ad13d1cb1bb5947f:255",
+    "type": "transfer",
+    "chain": "bsc",
+    "time": "2026-11-15T22:21:53.000Z",
+    "hash": "0xe4867e9974ad510911af3cec2537c899e050ec8df5e13507ad13d1cb1bb5947f",
+    "from": "0x09f3977040a58b1ab4d87cb2345f4a7e775af169",
+    "to": "0xfe289e20a60c2e349d5669a62275bd981c3db5ee",
+    "evaa": 3075.0000000000005,
+    "usd": 8563,
+    "tags": []
+  },
+  {
+    "key": "0x33c9497f9fed13c69f1e10d6e0d230cdd58cbc6b229f231357c8458335d187a2:76",
+    "type": "transfer",
+    "chain": "bsc",
+    "time": "2026-11-15T22:24:33.000Z",
+    "hash": "0x33c9497f9fed13c69f1e10d6e0d230cdd58cbc6b229f231357c8458335d187a2",
+    "from": "0xfe289e20a60c2e349d5669a62275bd981c3db5ee",
+    "to": "0xed9ab5bc05a0152b9dc2f7902e8369af7bc18771",
+    "evaa": 3075.0000000000005,
+    "usd": 8563,
+    "tags": []
   }
 ]
