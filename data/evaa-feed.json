@@ -3694,5 +3694,65 @@
     "evaa": 3075.0000000000005,
     "usd": 8563,
     "tags": []
+  },
+  {
+    "key": "0xf44b4e236107384afb7d54868a0c00622885d82d6bc55540f82be044883278af:240",
+    "type": "transfer",
+    "chain": "bsc",
+    "time": "2026-11-16T01:22:13.000Z",
+    "hash": "0xf44b4e236107384afb7d54868a0c00622885d82d6bc55540f82be044883278af",
+    "from": "0x0d0707963952f2fba59dd06f2b425ace40b492fe",
+    "to": "0x9f2489a90e491eb986c1839f9e5a49c4ab78012d",
+    "evaa": 1833.293,
+    "usd": 5009,
+    "tags": []
+  },
+  {
+    "key": "0x0a45c5138b6b7bc8fc02ec4bf695320cf929fb624d790f54118e41d6c9775efa:63",
+    "type": "transfer",
+    "chain": "bsc",
+    "time": "2026-11-16T01:25:04.000Z",
+    "hash": "0x0a45c5138b6b7bc8fc02ec4bf695320cf929fb624d790f54118e41d6c9775efa",
+    "from": "0x9f2489a90e491eb986c1839f9e5a49c4ab78012d",
+    "to": "0xed9ab5bc05a0152b9dc2f7902e8369af7bc18771",
+    "evaa": 1833.293,
+    "usd": 5009,
+    "tags": []
+  },
+  {
+    "key": "0xe48f35742b4a6d0149bb6f76908a3d51e0d168f14257e3ce40aecc533e79a804:78",
+    "type": "transfer",
+    "chain": "bsc",
+    "time": "2026-11-16T02:00:19.000Z",
+    "hash": "0xe48f35742b4a6d0149bb6f76908a3d51e0d168f14257e3ce40aecc533e79a804",
+    "from": "0x53f78a071d04224b8e254e243fffc6d9f2f3fa23",
+    "to": "0x8dac80ce96f69f9762bc450faa4d7fbd5891ae18",
+    "evaa": 5926.91,
+    "usd": 16194,
+    "tags": []
+  },
+  {
+    "key": "0x18b948560c79b718cb34c38d5931c873f4b56e7e0974d47966990ecae5661269:79",
+    "type": "transfer",
+    "chain": "bsc",
+    "time": "2026-11-16T02:00:19.000Z",
+    "hash": "0x18b948560c79b718cb34c38d5931c873f4b56e7e0974d47966990ecae5661269",
+    "from": "0x53f78a071d04224b8e254e243fffc6d9f2f3fa23",
+    "to": "0x69be413d648ae00f0fbd9856f1355e22b36ee5e0",
+    "evaa": 11660.138749743543,
+    "usd": 31858,
+    "tags": []
+  },
+  {
+    "key": "0xe411f0d60db59edd64982adeebd14ebb8c0ff5c45941b49de7bec62c4c7fa3cd:602",
+    "type": "transfer",
+    "chain": "bsc",
+    "time": "2026-11-16T02:06:53.000Z",
+    "hash": "0xe411f0d60db59edd64982adeebd14ebb8c0ff5c45941b49de7bec62c4c7fa3cd",
+    "from": "0xcf4859a99114e12308325a6c992a41a33a6f8cda",
+    "to": "0x0d0707963952f2fba59dd06f2b425ace40b492fe",
+    "evaa": 2947.61,
+    "usd": 8054,
+    "tags": []
   }
 ]
