@@ -5434,5 +5434,29 @@
     "evaa": 13630,
     "usd": 53660,
     "tags": []
+  },
+  {
+    "key": "0x3caa2bd9a11facbb345a707a66559738963aeeba6735b06ec336c78dec9b7d51:swap",
+    "type": "swap",
+    "chain": "bsc",
+    "time": "2026-11-17T12:42:40Z",
+    "hash": "0x3caa2bd9a11facbb345a707a66559738963aeeba6735b06ec336c78dec9b7d51",
+    "wallet": "0x754dcfb2861547015b221e963b4133a71dbdc024",
+    "side": "buy",
+    "evaa": 1284.82821934581,
+    "usd": 5227,
+    "tags": []
+  },
+  {
+    "key": "0x889555ea47d0bfe65e2ca1f069685ece426c58c0b70dfcdd8fc1ae7866be0800:swap",
+    "type": "swap",
+    "chain": "bsc",
+    "time": "2026-11-17T14:08:06Z",
+    "hash": "0x889555ea47d0bfe65e2ca1f069685ece426c58c0b70dfcdd8fc1ae7866be0800",
+    "wallet": "0x3749dd5d2820dc16f8128c81b14a3eba5826e04f",
+    "side": "sell",
+    "evaa": 1582.25940141894,
+    "usd": 5254,
+    "tags": []
   }
 ]
