@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="EVAA">
 <title>EVAA Canlı Panel</title>
-<!-- sürüm 27 -->
+<!-- sürüm 28 -->
 <style>
   :root {
     --bg: #0b0f14; --card: #131a22; --line: #1f2a36; --text: #e8edf2; --mute: #8a97a6;
@@ -106,6 +106,8 @@
   .wl { display:grid; grid-template-columns: 66px 1fr 58px 62px; gap:6px; align-items:center; font-size:13px; padding:7px 8px; border-radius:6px; margin-bottom:3px; }
   .wl .a { text-align:right; color:var(--mute); } .wl .d { text-align:right; }
   .wl.last { background:var(--card); border:1px solid var(--line); font-weight:650; padding:8px; justify-content:space-between; }
+  .sp { margin:8px 0 2px; } .sp .r { display:flex; justify-content:space-between; font-size:13px; margin-bottom:3px; } .sp .bar2 { display:flex; height:10px; border-radius:5px; overflow:hidden; background:var(--line); }
+  .sp .bar2 i { display:block; height:100%; } .sp .bar2 i.l { background:var(--buy); } .sp .bar2 i.s { background:var(--sell); }
 </style>
 </head>
 <body>
@@ -153,6 +155,7 @@
   <div class="diag" id="lvNote"></div>
 
   <h2 id="sPoz">Pozisyonlanma (vadeli işlem)</h2>
+  <div class="liq" id="topBox" style="margin-bottom:10px">Büyük hesaplar yükleniyor…</div>
   <div class="chips" id="posChips"></div>
   <div class="liq" id="posBox">Yükleniyor…</div>
   <div class="diag" id="posNote"></div>
@@ -1142,12 +1145,33 @@ function drawPos() {
   });
   if (any) { box.appendChild(el("div", "hd", "Grafikleri sürükle: aynı saatteki tüm değerler birlikte görünür. L/S 1'in üstü long, altı short ağırlığı demek.")); wireCharts(posCharts); }
 }
+
+function splitRow(title, lf, sf, extra) {
+  const d = el("div", "sp"), r = el("div", "r"); r.appendChild(el("b", null, title));
+  const l = el("span", null, "Long %" + (lf * 100).toFixed(1) + " · Short %" + (sf * 100).toFixed(1)); r.appendChild(l); d.appendChild(r);
+  const bar = el("div", "bar2"), a = document.createElement("i"), b = document.createElement("i"); a.className = "l"; b.className = "s"; a.style.width = (lf / (lf + sf) * 100) + "%"; b.style.width = (sf / (lf + sf) * 100) + "%"; bar.appendChild(a); bar.appendChild(b); d.appendChild(bar);
+  if (extra) d.appendChild(el("div", "m", extra));
+  return d;
+}
+function renderTop(acc, pos) {
+  const box = document.getElementById("topBox"); if (!box) return;
+  box.textContent = "";
+  box.appendChild(el("div", "hd", "Büyük hesaplar özeti (Binance en büyük trader'lar)"));
+  const ok2 = (a) => a && a.length;
+  if (!ok2(acc) && !ok2(pos)) { box.appendChild(el("div", "m", "Bu veri Binance'ten alınamadı.")); return; }
+  const lastOf = (a) => a[a.length - 1], agoOf = (a) => a[Math.max(0, a.length - 25)];
+  if (ok2(acc)) { const x = lastOf(acc), o = agoOf(acc), lf = +x.longAccount, sf = +x.shortAccount;
+    box.appendChild(splitRow("Hesap sayısına göre", lf, sf, "Long/Short oranı " + (+x.longShortRatio).toFixed(2) + " (24 saat önce " + (+o.longShortRatio).toFixed(2) + ")")); }
+  if (ok2(pos)) { const x = lastOf(pos), o = agoOf(pos), lf = +x.longAccount, sf = +x.shortAccount, r = lf / sf, r0 = +o.longAccount / +o.shortAccount;
+    box.appendChild(splitRow("Pozisyon büyüklüğüne göre (notional)", lf, sf, "Notional long/short oranı %" + (r * 100).toFixed(0) + " (24 saat önce %" + (r0 * 100).toFixed(0) + ")" + (r > r0 * 1.1 ? " · long ağırlığı artıyor" : r < r0 * 0.9 ? " · short ağırlığı artıyor" : " · yaklaşık sabit"))); }
+  box.appendChild(el("div", "m", "Ortalama giriş fiyatı, açık kâr/zarar ve kârlı hesap yüzdesi Binance'in herkese açık verisinde yok; o ekran uygulamanın kendi özel verisinden geliyor. Burada yalnızca açık olan kısım gösterilir."));
+}
 async function loadPos() {
   const f = "https://fapi.binance.com/futures/data/", q = "?symbol=" + PERP + "&period=1h&limit=500";
   const res = await Promise.allSettled([
     getJson(f + "openInterestHist" + q), getJson("https://fapi.binance.com/fapi/v1/fundingRate?symbol=" + PERP + "&limit=100"),
     getJson(f + "globalLongShortAccountRatio" + q), getJson(f + "topLongShortPositionRatio" + q), getJson(f + "takerlongshortRatio" + q),
-    getJson("https://fapi.binance.com/fapi/v1/ticker/24hr?symbol=" + PERP), fetchFng()
+    getJson("https://fapi.binance.com/fapi/v1/ticker/24hr?symbol=" + PERP), fetchFng(), getJson(f + "topLongShortAccountRatio" + q)
   ]);
   const v = (i) => (res[i].status === "fulfilled" && Array.isArray(res[i].value) ? res[i].value : null);
   const map = (a, fn) => (a ? a.map(fn).filter((x) => ok(x.v) && ok(x.t)) : []);
@@ -1164,6 +1188,7 @@ async function loadPos() {
   const tick = res[5].status === "fulfilled" ? res[5].value : null;
   P.pos = { funding: last(posData.fr), oiCh: oiCh, pxCh: tick ? +tick.priceChangePercent : null, crowd: last(posData.ga), top: last(posData.tp), taker: avgLast(posData.tk, 24) };
   if (res[6].status === "fulfilled") P.fng = res[6].value;
+  renderTop(res[7].status === "fulfilled" ? res[7].value : null, v(3));
   drawPos(); renderPulse();
   const bad = ["OI", "fonlama", "kalabalık L/S", "büyük oyuncu L/S", "taker"].filter((n, i) => !v(i));
   document.getElementById("posNote").textContent = bad.length ? "Alınamayan veriler: " + bad.join(", ") + " (Binance bu sembol için sunmuyor olabilir)." : "Kaynak: Binance vadeli istatistikleri, saatlik (son ~3 hafta).";
