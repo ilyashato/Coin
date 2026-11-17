@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="EVAA">
 <title>EVAA Canlı Panel</title>
-<!-- sürüm 26 -->
+<!-- sürüm 27 -->
 <style>
   :root {
     --bg: #0b0f14; --card: #131a22; --line: #1f2a36; --text: #e8edf2; --mute: #8a97a6;
@@ -103,6 +103,9 @@
   .sw { position: relative; } .lvl { position: absolute; left: 2px; font-size: 10px; background: rgba(11,15,20,.7); padding: 0 4px; border-radius: 4px; pointer-events: none; }
   .zone { font-size: 12px; font-weight: 650; margin: 0 0 4px; }
   div.m { color: var(--mute); font-size: 12px; margin: -2px 0 6px; white-space: pre-wrap; }
+  .wl { display:grid; grid-template-columns: 66px 1fr 58px 62px; gap:6px; align-items:center; font-size:13px; padding:7px 8px; border-radius:6px; margin-bottom:3px; }
+  .wl .a { text-align:right; color:var(--mute); } .wl .d { text-align:right; }
+  .wl.last { background:var(--card); border:1px solid var(--line); font-weight:650; padding:8px; justify-content:space-between; }
 </style>
 </head>
 <body>
@@ -136,6 +139,8 @@
   <h2 id="sDuvar">Emir defteri duvarları</h2>
   <div class="liq" id="wallBox">Yükleniyor…</div>
   <div class="diag" id="wallNote"></div>
+  <div class="liq" id="wallList" style="margin-top:10px">Duvar listesi yükleniyor…</div>
+  <div class="diag" id="wallListNote"></div>
   <div class="liq" id="wallHist" style="margin-top:10px">Değişim için kayıt biriktiriliyor…</div>
   <div class="diag" id="wallHistNote"></div>
 
@@ -892,6 +897,7 @@ async function loadWalls() {
     const bN = near(bR), aN = near(aR);
     P.wall = { ratio: aN > 0 ? bN / aN : null };
     wallSnapshot(mid, B, A);
+    wallListUpdate(mid, bids, asks);
     renderPulse();
     const top = (rows) => rows.sort((x, y) => y.v - x.v).slice(0, 4).sort((x, y) => y.p - x.p);
     const aT = top(aR), bT = top(bR), mx = Math.max(1, ...aT.map((r) => r.v), ...bT.map((r) => r.v));
@@ -1057,6 +1063,47 @@ function ghostRender() {
       dv.appendChild(el("span", "sm", new Date(g.t).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) + " · " + g.life + " sn yaşadı · fiyata %" + g.dist.toFixed(1) + " uzaktaydı, dolmadan kayboldu")); r.appendChild(dv); box.appendChild(r); }); }
   const mins = Math.round((Date.now() - ghStart) / 60000);
   note.textContent = "Her " + GHOST_MS / 1000 + " sn emir defteri okunuyor (sayfa açıkken). Bu oturumda " + ghPolls + " okuma, " + mins + " dk. Sayfa kapalıyken izlenmez. Bu yalnızca davranış örüntüsüdür; emri kimin koyduğu bilinemez, kesin 'robot' kanıtı değildir.";
+}
+
+
+/* ================= Duvar listesi (fiyat · tutar · uzaklık · yaş) =================
+   Emir defterindeki büyük bekleyen emirler. "Yaş", emrin sayfa tarafından ilk görüldüğü andan itibaren geçen süredir. */
+const WA_KEY = "evaa_wallage_v1";
+let waState = { last: 0, items: {} };
+try { const x = JSON.parse(localStorage.getItem(WA_KEY) || "null"); if (x && x.items) waState = x; } catch (e) {}
+function fmtAge(ms) { const s = Math.floor(ms / 1000); if (s < 60) return s + "sn"; const m = Math.floor(s / 60); if (m < 60) return m + "dk " + (s % 60) + "sn"; const h = Math.floor(m / 60); return h < 24 ? h + "sa " + (m % 60) + "dk" : Math.floor(h / 24) + "g " + (h % 24) + "sa"; }
+function wallListUpdate(mid, bids, asks) {
+  const box = document.getElementById("wallList"), note = document.getElementById("wallListNote"); if (!box) return;
+  const now = Date.now(), dp = mid >= 1 ? 3 : 4, lv = {};
+  const add = (arr, side) => arr.forEach(([p, q]) => { const k = side + p.toFixed(dp), x = lv[k] || (lv[k] = { side: side, p: +p.toFixed(dp), n: 0, k: k }); x.n += p * q; });
+  add(bids, "alış"); add(asks, "satış");
+  const vals = Object.keys(lv).map((k) => lv[k].n).sort((a, b) => a - b), med = vals.length ? vals[vals.length >> 1] : 0, T = Math.max(med * 6, 2000);
+  const stale = now - waState.last > 300000;   // uzun süre izlenmediyse eski yaşlar güvenilmez
+  const big = Object.keys(lv).map((k) => lv[k]).filter((x) => x.n >= T);
+  big.forEach((x) => { const t = waState.items[x.k]; if (t && !stale) { t.last = now; } else waState.items[x.k] = { first: now, last: now, pre: true }; });
+  Object.keys(waState.items).forEach((k) => { if (now - waState.items[k].last > 180000) delete waState.items[k]; });
+  waState.last = now; try { localStorage.setItem(WA_KEY, JSON.stringify(waState)); } catch (e) {}
+  const pick = (side) => big.filter((x) => x.side === side).sort((a, b) => b.n - a.n).slice(0, 8).sort((a, b) => b.p - a.p);
+  const A = pick("satış"), B = pick("alış"), mx = Math.max(1, ...A.map((x) => x.n), ...B.map((x) => x.n));
+  const row = (x, col) => {
+    const it = waState.items[x.k], age = it ? now - it.first : 0, w = Math.max(6, x.n / mx * 100);
+    const d = el("div", "wl"); d.style.background = "linear-gradient(90deg, " + col + " " + w + "%, transparent " + w + "%)";
+    d.appendChild(el("span", null, x.p.toFixed(dp)));
+    d.appendChild(el("span", null, fmtUsd(x.n)));
+    const dist = (x.p / mid - 1) * 100; d.appendChild(el("span", "d", (dist >= 0 ? "+" : "−") + Math.abs(dist).toFixed(2) + "%"));
+    d.appendChild(el("span", "a", (it && it.pre ? "≥" : "") + fmtAge(age)));
+    return d;
+  };
+  box.textContent = "";
+  box.appendChild(el("div", "hd", "Büyük duvarlar: fiyat · tutar · uzaklık · yaş"));
+  A.forEach((x) => box.appendChild(row(x, "rgba(239,91,91,.38)")));
+  const nA = A.length ? Math.min(...A.map((x) => x.p)) : null, nB = B.length ? Math.max(...B.map((x) => x.p)) : null;
+  const last = el("div", "wl last"); last.style.gridTemplateColumns = "1fr auto"; last.appendChild(el("span", null, "Son fiyat " + mid.toFixed(dp)));
+  last.appendChild(el("span", "a", nA && nB ? "Duvar aralığı " + (((nA - nB) / mid) * 100 >= 0 ? "+" : "") + (((nA - nB) / mid) * 100).toFixed(2) + "%" : ""));
+  box.appendChild(last);
+  B.forEach((x) => box.appendChild(row(x, "rgba(47,191,113,.38)")));
+  if (!A.length && !B.length) box.appendChild(el("div", "hd", "Eşiği aşan duvar yok."));
+  note.textContent = "Kırmızı: satış duvarları (üstte), yeşil: alış duvarları (altta). Eşik: tipik emir büyüklüğünün 6 katı. Yaştaki ≥ işareti, emrin sayfa ilk açıldığında zaten orada olduğunu gösterir; gerçek yaşı daha uzun olabilir. Yaş yalnızca sayfa açıkken sayılır.";
 }
 
 /* ================= Pozisyonlanma grafikleri ================= */
