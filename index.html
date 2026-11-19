@@ -3,19 +3,26 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#050505">
+<meta name="theme-color" content="#f1f3f7">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script>try{var t=localStorage.getItem("hf_theme");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="EVAA">
 <title>EVAA Canlı Panel</title>
-<!-- sürüm 30 -->
+<!-- sürüm 31 -->
 <style>
-  :root {
-    --bg: #050505; --card: #0d1116; --line: #1b232c; --text: #e8edf2; --mute: #8a97a6;
-    --buy: #2fbf71; --sell: #ef5b5b; --xfer: #4c9aff; --watch: #f5b13d;
-  }
+  :root { --bg:#f1f3f7; --card:#ffffff; --line:#dde2ea; --line2:#eceff4; --text:#141c2f; --ink2:#4a556c; --mute:#7d879b;
+    --buy:#16845a; --buy-soft:#dff2e8; --sell:#c43c2c; --sell-soft:#f9e3df; --xfer:#2c56c9; --accent-soft:#e4ebfb;
+    --watch:#a56a07; --warn-soft:#f7ecd5; --purple:#7a4fd0; --r:14px; --shadow:0 1px 2px rgba(20,28,47,.05),0 4px 14px rgba(20,28,47,.05);
+    --f-body:"Schibsted Grotesk",-apple-system,system-ui,"Segoe UI",sans-serif; --f-num:"IBM Plex Mono",ui-monospace,Menlo,monospace; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#0c111c; --card:#151c2b; --line:#263148; --line2:#1d2639; --text:#e8ecf5; --ink2:#b3bdd1; --mute:#8590a8;
+    --buy:#3ecf8e; --buy-soft:#14382b; --sell:#ff6b5b; --sell-soft:#3d1d1a; --xfer:#6f93f5; --accent-soft:#1c2a4d; --watch:#e8b04a; --warn-soft:#3a2d12; --purple:#a98bf0; --shadow:none; } }
+  :root[data-theme="dark"] { --bg:#0c111c; --card:#151c2b; --line:#263148; --line2:#1d2639; --text:#e8ecf5; --ink2:#b3bdd1; --mute:#8590a8;
+    --buy:#3ecf8e; --buy-soft:#14382b; --sell:#ff6b5b; --sell-soft:#3d1d1a; --xfer:#6f93f5; --accent-soft:#1c2a4d; --watch:#e8b04a; --warn-soft:#3a2d12; --purple:#a98bf0; --shadow:none; }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text);
-         font: 15px/1.45 -apple-system, system-ui, "Segoe UI", Roboto, sans-serif; }
+         font: 15px/1.45 var(--f-body); -webkit-font-smoothing: antialiased; }
   .wrap { max-width: 640px; margin: 0 auto; padding: 20px 16px 48px; }
   h1 { font-size: 20px; margin: 0 0 2px; }
   h2 { font-size: 14px; margin: 22px 0 10px; color: var(--mute); font-weight: 600;
@@ -122,11 +129,60 @@
   .sc .parts { color: var(--mute); font-size: 12px; margin-top: 4px; }
   .scr { display:grid; grid-template-columns: 58px 1fr 52px 62px 58px; gap:6px; font-size:12.5px; padding:7px 0; border-bottom:1px solid var(--line); text-decoration:none; color:var(--text); align-items:center; }
   .scr.h { color: var(--mute); font-size: 11.5px; } .scr span:not(:first-child) { text-align:right; } .scr:last-child { border-bottom: 0; }
+
+  .wrap { padding-top: 12px; }
+  h2 { font-size: 13px; color: var(--ink2); letter-spacing: .02em; margin: 6px 0 10px; text-transform: none; font-weight: 700; display:flex; align-items:center; gap:8px; }
+  h2::before { content:""; width:4px; height:14px; border-radius:2px; background:var(--xfer); }
+  .tile, .liq, .item, .nav a, .chip, .srch input, .srch button, .refresh { box-shadow: var(--shadow); }
+  .tile, .liq, .item { border-radius: var(--r); border-color: var(--line); }
+  .mkt-price, .tile .v, .usd, .lq, .wl, .ex, .scr, .lv .u, .deltas, .chart .ax { font-family: var(--f-num); }
+  .mkt-price { font-weight: 600; letter-spacing: -.02em; }
+  .item { border-left-width: 1px; border-left-color: var(--line); position: relative; }
+  .item::before { content:""; position:absolute; left:0; top:10px; bottom:10px; width:4px; border-radius:0 3px 3px 0; background:var(--xfer); }
+  .item.buy::before { background: var(--buy); } .item.sell::before { background: var(--sell); }
+  .chip { font-size: 13px; font-weight: 600; padding: 7px 14px; box-shadow: none; }
+  .chip.on { background: var(--text); color: var(--bg); border-color: var(--text); }
+  .i { width: 22px; height: 22px; border-color: var(--line); background: var(--accent-soft); color: var(--xfer); font-weight: 700; }
+  .pill { background: var(--line2); border: 0; font-weight: 600; } .pill.on { background: var(--buy-soft); color: var(--buy); }
+  .sw .lvl { background: var(--card); }
+  .hf { display:flex; align-items:center; justify-content:space-between; gap:10px; margin: 2px 0 12px; }
+  .brand { display:flex; align-items:center; gap:10px; min-width:0; }
+  .brand svg { flex:none; } .brand .bn { font-weight:700; font-size:17px; line-height:1.1; letter-spacing:-.01em; } .brand .bn b { color: var(--xfer); font-weight:700; }
+  .brand .bs { color: var(--mute); font-size: 12px; margin-top: 1px; }
+  .tb { display:flex; gap:8px; align-items:center; }
+  .iconbtn { width:38px; height:38px; border-radius:50%; border:1px solid var(--line); background:var(--card); color:var(--text); display:grid; place-items:center; cursor:pointer; box-shadow:var(--shadow); padding:0; }
+  .iconbtn svg { width:18px; height:18px; } .iconbtn:active { background: var(--accent-soft); } .iconbtn.spin svg { animation: sp .8s linear infinite; }
+  @keyframes sp { to { transform: rotate(360deg); } }
+  .coinhd { display:flex; align-items:center; gap:10px; margin: 4px 0 10px; } .coinhd .cn { font-size: 22px; font-weight: 700; letter-spacing: -.02em; }
+  .srch { margin: 0 0 8px; } .srch input { border-radius: 999px; padding: 11px 16px; text-transform: uppercase; font-family: var(--f-body); }
+  .srch button { background: var(--xfer); color: #fff; border: 0; border-radius: 999px; padding: 0 20px; font-weight: 600; font-family: var(--f-body); }
+  .tabs { position: sticky; top: 0; z-index: 9; display:flex; gap:4px; padding:4px; margin: 6px 0 14px; background: var(--line2); border: 1px solid var(--line); border-radius: 999px; overflow-x:auto; scrollbar-width:none; }
+  .tabs::-webkit-scrollbar { display:none; }
+  .tab { flex:1 0 auto; border:0; background:none; color:var(--ink2); font: 600 13.5px var(--f-body); padding: 9px 14px; border-radius: 999px; cursor:pointer; white-space:nowrap; }
+  .tab.on { background: var(--card); color: var(--xfer); box-shadow: var(--shadow); }
+  .sec { margin-bottom: 18px; } .sec[hidden] { display:none; }
+  .tile .v { font-weight: 600; } .tile .k { font-weight: 500; }
+  .bar > div { background: var(--xfer); } .lq .bar, .bar { background: var(--line2); }
+  .qa { border-top-color: var(--line2); } .lv, .pl, .sr, .ex, .scr { border-bottom-color: var(--line2); }
+  .empty, .err { border-radius: var(--r); background: var(--card); }
+  .err { background: var(--sell-soft); border-color: transparent; }
+  .foot { line-height: 1.6; }
+  .refresh, .nav { display:none !important; }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1 id="h1">EVAA Canlı Panel <span class="pill" id="livePill">bağlanıyor</span></h1>
+  <div class="hf">
+    <div class="brand">
+      <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="10" fill="var(--xfer)"/><path d="M7 22l6-7 5 4 9-10" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="27" cy="9" r="2.2" fill="#fff"/></svg>
+      <div><div class="bn"><b>hato</b>financial</div><div class="bs">kişisel türev radarı</div></div>
+    </div>
+    <div class="tb"><span class="pill" id="livePill">bağlanıyor</span>
+      <button class="iconbtn" id="themeBtn" type="button" aria-label="Tema"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></svg></button>
+      <button class="iconbtn" id="refreshIcon" type="button" aria-label="Yenile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 11-3-6.7"/><path d="M21 4v5h-5"/></svg></button>
+    </div>
+  </div>
+  <h1 id="h1" class="coinhd" style="display:none"></h1>
   <form class="srch" id="srchForm" autocomplete="off"><input id="coinIn" placeholder="Coin yaz (BTC, SOL, EVAA…)" inputmode="text" autocapitalize="characters" spellcheck="false"><button type="submit">Göster</button></form>
   <div class="chips" id="coinChips"></div>
   <div class="diag" id="srchMsg"></div>
@@ -134,7 +190,6 @@
     <a href="#sOzet">Özet</a><a href="#sTara">Tarama</a><a href="#sEkran">Tarayıcı</a><a href="#sNabiz">Nabız</a><a href="#sLiq">Likidasyon</a><a href="#sDuvar">Duvarlar</a><a href="#sRobot">Robot</a><a href="#sCanli">Canlı</a><a href="#sBorsa">Borsalar</a><a href="#sSikis">Sıkışma</a><a href="#sPoz">Pozisyon</a><a href="#sSeyir">Seyir</a><a href="#sZincir" id="navChain">Zincir</a>
   </nav>
   <div class="sub" id="sub">Yükleniyor…</div>
-  <button class="refresh" id="refreshBtn" type="button">⟳ Yenile</button>
 
   <div class="mkt-head">
     <div>
@@ -215,6 +270,7 @@
 </div>
 
 <script>
+function cv(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim()||"#888";}
 /* ================= Ayarlar ================= */
 const FEED_URL = "https://raw.githubusercontent.com/ilyashato/Coin/main/data/evaa-feed.json";
 const CG = "https://api.coingecko.com/api/v3";
@@ -755,7 +811,7 @@ function lineChart(title, pts, color, opts) {
   const path = document.createElementNS(NS, "path");
   path.setAttribute("d", pts.map((p, i) => (i ? "L" : "M") + X(p.t).toFixed(1) + " " + Y(p.v).toFixed(1)).join(" "));
   path.setAttribute("fill", "none"); path.setAttribute("stroke", color); path.setAttribute("stroke-width", "2"); path.setAttribute("vector-effect", "non-scaling-stroke");
-  const cur = document.createElementNS(NS, "line"); cur.setAttribute("y1", 0); cur.setAttribute("y2", H); cur.setAttribute("stroke", "#8a97a6"); cur.setAttribute("stroke-width", "1"); cur.setAttribute("vector-effect", "non-scaling-stroke"); cur.style.display = "none";
+  const cur = document.createElementNS(NS, "line"); cur.setAttribute("y1", 0); cur.setAttribute("y2", H); cur.setAttribute("stroke", cv("--mute")); cur.setAttribute("stroke-width", "1"); cur.setAttribute("vector-effect", "non-scaling-stroke"); cur.style.display = "none";
   const sw = el("div", "sw"); const stat = el("div", "zone"); w.appendChild(stat);
   lv.forEach((l) => {
     const ln = document.createElementNS(NS, "line"); ln.setAttribute("x1", 0); ln.setAttribute("x2", W); ln.setAttribute("y1", Y(l[0])); ln.setAttribute("y2", Y(l[0]));
@@ -802,7 +858,7 @@ function drawCharts() {
   if (!chData) return;
   const days = CH_RANGES[chIdx][1], cut = days ? Date.now() - days * 864e5 : 0;
   let any = false;
-  [["TVL", chData.tvl, "#4c9aff"], ["FDV", chData.fdv, "#f5b13d"], ["Fiyat", chData.price, "#2fbf71"]].forEach(([n, arr, col]) => {
+  [["TVL", chData.tvl, cv("--xfer")], ["FDV", chData.fdv, cv("--watch")], ["Fiyat", chData.price, cv("--buy")]].forEach(([n, arr, col]) => {
     const pts = (arr || []).filter((p) => p.t >= cut);
     if (pts.length > 1) { box.appendChild(lineChart(n, pts, col)); any = true; }
     else box.appendChild(el("div", "hd", n + ": veri yok"));
@@ -1082,7 +1138,7 @@ function wallHistRender() {
   // zaman serisi grafiği
   const bid = wSnaps.map((x) => ({ t: x.t, v: nearB(x) })).filter((x) => x.v > 0), ask = wSnaps.map((x) => ({ t: x.t, v: nearA(x) })).filter((x) => x.v > 0);
   if (bid.length > 2 && ask.length > 2) {
-    box.appendChild(lineChart("Emir defteri seyri", bid, "#2fbf71", { group: wallCharts, fmt: fmtUsd, pct: false, name1: "Alış", s2: { name: "Satış", color: "#ef5b5b", pts: ask },
+    box.appendChild(lineChart("Emir defteri seyri", bid, cv("--buy"), { group: wallCharts, fmt: fmtUsd, pct: false, name1: "Alış", s2: { name: "Satış", color: cv("--sell"), pts: ask },
       status: (b, a) => [[a ? "Alıcı/satıcı oranı " + (b / a).toFixed(2) + "x " + (b / a > 1.3 ? "(alıcılar baskın)" : b / a < 0.77 ? "(satıcılar baskın)" : "(dengeli)") : "", b / a > 1.3 ? "var(--buy)" : b / a < 0.77 ? "var(--sell)" : "var(--mute)"]] }));
     wireCharts(wallCharts);
     wallCharts.forEach((c) => { c.svg.addEventListener("pointerdown", () => { window.__wdrag = Date.now(); }); c.svg.addEventListener("pointermove", () => { window.__wdrag = Date.now(); }); });
@@ -1219,7 +1275,7 @@ async function goCoin(x) {
   location.search = "?c=" + b;
 }
 function setupCoin() {
-  document.title = SYM + " Canlı Panel"; document.getElementById("h1").textContent = SYM + " Canlı Panel";
+  document.title = SYM + " · hatofinancial"; { const h = document.getElementById("h1"); h.textContent = SYM + " canlı panel"; h.style.display = "flex"; }
   const mt = document.querySelector('meta[name="apple-mobile-web-app-title"]'); if (mt) mt.setAttribute("content", SYM);
   const inp = document.getElementById("coinIn"); inp.value = SYM;
   document.getElementById("srchForm").onsubmit = (e) => { e.preventDefault(); goCoin(inp.value); };
@@ -1427,7 +1483,7 @@ async function loadScreen() {
 /* ================= Pozisyonlanma grafikleri ================= */
 
 /* Eşik çizgileri ve "şu an" durum metinleri */
-const ZR = "#ef5b5b", ZG = "#2fbf71", ZN0 = "#8a97a6";
+const ZR = cv("--sell"), ZG = cv("--buy"), ZN0 = cv("--mute");
 const ZN = {
   fr: { levels: [[0.03, "aşırı ısınma 0,03%", ZR], [0, "0", ZN0], [-0.01, "short squeeze −0,01%", ZG]],
     status: (v) => v > 0.03 ? ["Eşiğin ÜSTÜNDE: long'lar aşırı kalabalık, düzeltme riski", ZR] : v < -0.01 ? ["Eşiğin ALTINDA: short'lar ödüyor, yukarı sıkışma zemini", ZG] : v > 0 ? ["Normal bölge: hafif long ağırlık", ZN0] : ["Normal bölge: hafif short ağırlık", ZN0] },
@@ -1451,11 +1507,11 @@ function drawPos() {
   if (!posData) return;
   const days = POS_RANGES[posIdx][1], cut = days ? Date.now() - days * 864e5 : 0;
   let any = false;
-  [["Açık pozisyon (OI)", posData.oi, "#4c9aff", fmtBig, true, null], ["Fonlama oranı", posData.fr, "#f5b13d", fPct, false, ZN.fr],
-   ["Kalabalık ve büyük oyuncu L/S", posData.ga, "#2fbf71", fRat, false, ZN.ls],
-   ["Taker alış/satış", posData.tk, "#ef5b5b", fRat, false, ZN.tk]].forEach(([n, arr, col, fmt, pct, zn]) => {
+  [["Açık pozisyon (OI)", posData.oi, cv("--xfer"), fmtBig, true, null], ["Fonlama oranı", posData.fr, cv("--watch"), fPct, false, ZN.fr],
+   ["Kalabalık ve büyük oyuncu L/S", posData.ga, cv("--buy"), fRat, false, ZN.ls],
+   ["Taker alış/satış", posData.tk, cv("--sell"), fRat, false, ZN.tk]].forEach(([n, arr, col, fmt, pct, zn]) => {
     const pts = (arr || []).filter((p) => p.t >= cut);
-    if (pts.length > 1) { box.appendChild(lineChart(n, pts, col, { group: posCharts, fmt: fmt, pct: pct, levels: zn && zn.levels, status: zn && zn.status, name1: "Kalabalık", s2: zn === ZN.ls ? { name: "Büyükler", color: "#c084fc", pts: (posData.tp || []).filter((p) => p.t >= cut) } : null })); any = true; }
+    if (pts.length > 1) { box.appendChild(lineChart(n, pts, col, { group: posCharts, fmt: fmt, pct: pct, levels: zn && zn.levels, status: zn && zn.status, name1: "Kalabalık", s2: zn === ZN.ls ? { name: "Büyükler", color: cv("--purple"), pts: (posData.tp || []).filter((p) => p.t >= cut) } : null })); any = true; }
     else box.appendChild(el("div", "hd", n + ": veri yok"));
   });
   if (any) { box.appendChild(el("div", "hd", "Grafikleri sürükle: aynı saatteki tüm değerler birlikte görünür. L/S 1'in üstü long, altı short ağırlığı demek.")); wireCharts(posCharts); }
@@ -1590,10 +1646,43 @@ loadCharts();
 loadLiq();
 setInterval(loadCharts, 10 * 60 * 1000);
 setInterval(loadLiq, 5 * 60 * 1000);
-document.getElementById("refreshBtn").onclick = async function () {
-  const b = this; b.disabled = true; b.textContent = "Yenileniyor…";
-  try { await Promise.allSettled([loadMarket(), loadFeed(), loadLiq(), loadCharts(), loadPos(), loadWalls(), loadScan(), loadExch(), loadScreen()]); } finally { b.disabled = false; b.textContent = "⟳ Yenile"; }
+document.getElementById("refreshIcon").onclick = async function () {
+  const b = this; b.disabled = true; b.classList.add("spin");
+  try { await Promise.allSettled([loadMarket(), loadFeed(), loadLiq(), loadCharts(), loadPos(), loadWalls(), loadScan(), loadExch(), loadScreen()]); } finally { b.disabled = false; b.classList.remove("spin"); }
 };
+document.getElementById("themeBtn").onclick = function () {
+  const cur = document.documentElement.getAttribute("data-theme") || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  try { localStorage.setItem("hf_theme", cur === "dark" ? "light" : "dark"); } catch (e) {}
+  location.reload();
+};
+/* sekmeler */
+(function () {
+  const GR = [["bugun", "Bugün", ["sOzet", "sNabiz", "sSikis", "sTara", "sEkran"]], ["liq", "Likidasyon", ["sLiq", "sCanli"]],
+    ["emir", "Emirler", ["sDuvar", "sRobot", "sBorsa"]], ["poz", "Pozisyon", ["sPoz", "sSeyir"]], ["zincir", "Zincir", ["sZincir"]]];
+  const wrap = document.querySelector(".wrap"), foot = wrap.querySelector(".foot");
+  const heads = {}; wrap.querySelectorAll("h2[id]").forEach(h => heads[h.id] = h);
+  const secs = {};
+  GR.forEach(g => { const d = document.createElement("div"); d.className = "sec"; d.dataset.g = g[0]; secs[g[0]] = d; });
+  Object.keys(heads).forEach(id => {
+    const h = heads[id], grp = GR.find(g => g[2].includes(id)); if (!grp) return;
+    const box = document.createElement("div"); box.id = id + "Box";
+    const els = [h]; let n = h.nextElementSibling;
+    while (n && n.tagName !== "H2" && !n.classList.contains("foot")) { els.push(n); n = n.nextElementSibling; }
+    h.parentNode.insertBefore(box, h); els.forEach(e => box.appendChild(e)); box.style.marginBottom = "18px";
+    secs[grp[0]].appendChild(box);
+  });
+  const bar = document.createElement("div"); bar.className = "tabs"; bar.id = "tabs";
+  const order = GR.filter(g => g[0] !== "zincir" || HAS_CHAIN);
+  let saved = "bugun"; try { saved = localStorage.getItem("hf_tab") || "bugun"; } catch (e) {}
+  if (!order.some(g => g[0] === saved)) saved = "bugun";
+  function show(k) { GR.forEach(g => { secs[g[0]].hidden = g[0] !== k; }); bar.querySelectorAll(".tab").forEach(t => t.classList.toggle("on", t.dataset.g === k)); try { localStorage.setItem("hf_tab", k); } catch (e) {} }
+  order.forEach(g => { const b = document.createElement("button"); b.type = "button"; b.className = "tab"; b.dataset.g = g[0]; b.textContent = g[1]; b.onclick = () => { show(g[0]); window.scrollTo({ top: Math.max(0, bar.offsetTop - 4), behavior: "smooth" }); }; bar.appendChild(b); });
+  const mh = wrap.querySelector(".mkt-head"); mh.parentNode.insertBefore(bar, mh.nextSibling);
+  const mg = document.getElementById("mGrid"), dg = document.getElementById("diag");
+  secs.bugun.insertBefore(dg, secs.bugun.firstChild); secs.bugun.insertBefore(mg, secs.bugun.firstChild); mg.style.marginBottom = "14px";
+  GR.forEach(g => foot.parentNode.insertBefore(secs[g[0]], foot));
+  show(saved);
+})();
 setInterval(loadMarket, MKT_REFRESH_MS);
 setInterval(loadFeed, FEED_REFRESH_MS);
 </script>
