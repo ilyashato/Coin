@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#0b0f14">
+<meta name="theme-color" content="#050505">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="EVAA">
 <title>EVAA Canlı Panel</title>
-<!-- sürüm 29 -->
+<!-- sürüm 30 -->
 <style>
   :root {
-    --bg: #0b0f14; --card: #131a22; --line: #1f2a36; --text: #e8edf2; --mute: #8a97a6;
+    --bg: #050505; --card: #0d1116; --line: #1b232c; --text: #e8edf2; --mute: #8a97a6;
     --buy: #2fbf71; --sell: #ef5b5b; --xfer: #4c9aff; --watch: #f5b13d;
   }
   * { box-sizing: border-box; }
@@ -113,16 +113,25 @@
   .sr { display:grid; grid-template-columns: 64px 1fr auto; gap:8px; font-size:13px; padding:6px 0; border-bottom:1px solid var(--line); text-decoration:none; color:var(--text); align-items:center; }
   .sr:last-child { border-bottom:0; } .sr .m { color:var(--mute); font-size:12px; } a.sr b { font-weight:650; }
   .ex { display:grid; grid-template-columns: 62px 1fr 74px 82px 72px; gap:6px; font-size:12.5px; padding:6px 0; border-bottom:1px solid var(--line); } .ex.h { color:var(--mute); font-size:11.5px; } .ex span:not(:first-child) { text-align:right; }
+  .pill { font-size: 11px; font-weight: 600; vertical-align: middle; margin-left: 8px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--mute); }
+  .pill.on { color: var(--buy); border-color: var(--buy); }
+  .sumtxt { font-size: 14px; line-height: 1.55; } .sumtxt b { font-weight: 650; }
+  .qa { margin-top: 8px; border-top: 1px solid var(--line); padding-top: 6px; } .qa .q { font-weight: 650; font-size: 13px; margin-top: 6px; } .qa .a { color: var(--mute); font-size: 13px; }
+  .sc { margin: 8px 0; } .sc .t { display:flex; justify-content:space-between; font-size:13px; margin-bottom:3px; } .sc .t b { font-weight:650; }
+  .sc .tr { height: 12px; border-radius: 6px; background: var(--line); overflow: hidden; } .sc .tr i { display:block; height:100%; }
+  .sc .parts { color: var(--mute); font-size: 12px; margin-top: 4px; }
+  .scr { display:grid; grid-template-columns: 58px 1fr 52px 62px 58px; gap:6px; font-size:12.5px; padding:7px 0; border-bottom:1px solid var(--line); text-decoration:none; color:var(--text); align-items:center; }
+  .scr.h { color: var(--mute); font-size: 11.5px; } .scr span:not(:first-child) { text-align:right; } .scr:last-child { border-bottom: 0; }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1 id="h1">EVAA Canlı Panel</h1>
+  <h1 id="h1">EVAA Canlı Panel <span class="pill" id="livePill">bağlanıyor</span></h1>
   <form class="srch" id="srchForm" autocomplete="off"><input id="coinIn" placeholder="Coin yaz (BTC, SOL, EVAA…)" inputmode="text" autocapitalize="characters" spellcheck="false"><button type="submit">Göster</button></form>
   <div class="chips" id="coinChips"></div>
   <div class="diag" id="srchMsg"></div>
   <nav class="nav" id="nav">
-    <a href="#sTara">Tarama</a><a href="#sNabiz">Nabız</a><a href="#sLiq">Likidasyon</a><a href="#sDuvar">Duvarlar</a><a href="#sRobot">Robot</a><a href="#sCanli">Canlı</a><a href="#sBorsa">Borsalar</a><a href="#sPoz">Pozisyon</a><a href="#sSeyir">Seyir</a><a href="#sZincir" id="navChain">Zincir</a>
+    <a href="#sOzet">Özet</a><a href="#sTara">Tarama</a><a href="#sEkran">Tarayıcı</a><a href="#sNabiz">Nabız</a><a href="#sLiq">Likidasyon</a><a href="#sDuvar">Duvarlar</a><a href="#sRobot">Robot</a><a href="#sCanli">Canlı</a><a href="#sBorsa">Borsalar</a><a href="#sSikis">Sıkışma</a><a href="#sPoz">Pozisyon</a><a href="#sSeyir">Seyir</a><a href="#sZincir" id="navChain">Zincir</a>
   </nav>
   <div class="sub" id="sub">Yükleniyor…</div>
   <button class="refresh" id="refreshBtn" type="button">⟳ Yenile</button>
@@ -137,11 +146,19 @@
   <div class="grid" id="mGrid"></div>
   <div class="diag" id="diag"></div>
 
+  <h2 id="sOzet">Özet</h2>
+  <div class="liq" id="coinSum">Özet hazırlanıyor…</div>
+
   <h2 id="sTara">Piyasa taraması (tüm Binance vadeli coinler)</h2>
   <div class="liq" id="scanBox">Taranıyor…</div>
   <div class="diag" id="scanNote"></div>
   <div class="liq" id="scanLiq" style="margin-top:10px">Piyasa geneli likidasyonlar bağlanıyor…</div>
   <div class="diag" id="scanLiqNote"></div>
+
+  <h2 id="sEkran">Tarayıcı (Bybit vadeli, tüm coinler)</h2>
+  <div class="chips" id="scrChips"></div>
+  <div class="liq" id="scrBox">Yükleniyor…</div>
+  <div class="diag" id="scrNote"></div>
 
   <h2 id="sNabiz">Piyasa nabzı</h2>
   <div class="liq" id="pulse">Veriler toplanıyor…</div>
@@ -171,6 +188,10 @@
   <h2 id="sBorsa">Borsa karşılaştırma (Binance · Bybit · OKX)</h2>
   <div class="liq" id="exBox">Yükleniyor…</div>
   <div class="diag" id="exNote"></div>
+
+  <h2 id="sSikis">Sıkışma skoru ve OI anomalisi</h2>
+  <div class="liq" id="sqBox">Veriler toplanıyor…</div>
+  <div class="diag" id="sqNote"></div>
 
   <h2 id="sPoz">Pozisyonlanma (vadeli işlem)</h2>
   <div class="liq" id="topBox" style="margin-bottom:10px">Büyük hesaplar yükleniyor…</div>
@@ -853,9 +874,9 @@ function lvConnect(url, onOpen, onMsg, name, quiet) {
   let ws;
   const open = () => {
     try { ws = new WebSocket(url); } catch (e) { return; }
-    ws.onopen = () => { if (onOpen) onOpen(ws); if (!quiet) document.getElementById("lvNote").textContent = "Canlı akış bağlı (" + name + "). Kimlik bilgisi borsalarca paylaşılmaz; yalnız taraf, tutar, fiyat görünür. Sayfa kapalıyken olanlar kaydedilmez."; };
+    ws.onopen = () => { wsPill(1); if (onOpen) onOpen(ws); if (!quiet) document.getElementById("lvNote").textContent = "Canlı akış bağlı (" + name + "). Kimlik bilgisi borsalarca paylaşılmaz; yalnız taraf, tutar, fiyat görünür. Sayfa kapalıyken olanlar kaydedilmez."; };
     ws.onmessage = (m) => { try { onMsg(JSON.parse(m.data)); } catch (e) {} };
-    ws.onclose = () => setTimeout(open, 5000);
+    ws.onclose = () => { wsPill(-1); setTimeout(open, 5000); };
     ws.onerror = () => { try { ws.close(); } catch (e) {} };
   };
   open();
@@ -1205,7 +1226,7 @@ function setupCoin() {
   inp.onfocus = () => inp.select();
   let rec = []; try { rec = JSON.parse(lsGet("recent_coins", "[]")); } catch (e) {}
   rec = [SYM].concat(rec.filter((x) => x !== SYM)).slice(0, 8); lsSet("recent_coins", JSON.stringify(rec));
-  const list = rec.concat(["BTC", "ETH", "SOL", "EVAA"]).filter((x, i, a) => a.indexOf(x) === i).slice(0, 10);
+  const list = rec.concat(["BTC", "ETH", "SOL", "XRP", "BNB", "DOGE", "HYPE", "ZEC", "1000PEPE", "XAUT", "AVAX", "LINK", "SUI", "ADA", "TON", "EVAA"]).filter((x, i, a) => a.indexOf(x) === i).slice(0, 24);
   const box = document.getElementById("coinChips"); box.textContent = "";
   list.forEach((c) => { const b = el("button", "chip" + (c === SYM ? " on" : ""), c); b.type = "button"; b.onclick = () => { if (c !== SYM) goCoin(c); }; box.appendChild(b); });
   if (!HAS_CHAIN) {
@@ -1299,7 +1320,108 @@ async function loadExch() {
   if (spread > 0.02) msg.push("Fonlama borsalar arasında " + spread.toFixed(3) + " puan ayrışıyor: bir borsada diğerinden belirgin biçimde daha kalabalık bir taraf var.");
   if (pd > 0.3) msg.push("Borsalar arası fiyat farkı %" + pd.toFixed(2) + ": likidite zayıf ya da oynaklık yüksek.");
   const c = el("div", "zone", msg.join(" ")); c.style.color = "var(--mute)"; box.appendChild(c);
+  X.ex = rows; renderSummary(); renderSqueeze();
   note.textContent = "Kaynak: Binance, Bybit ve OKX herkese açık vadeli verisi. " + (rows.length < 3 ? "Bu coin bazı borsalarda listelenmemiş olabilir." : "");
+}
+
+
+/* ================= Canlı bağlantı göstergesi ================= */
+let _wsOpen = 0;
+function wsPill(delta) { _wsOpen = Math.max(0, _wsOpen + delta); const p = document.getElementById("livePill"); if (!p) return; p.textContent = _wsOpen > 0 ? "canlı" : "bağlanıyor"; p.className = "pill" + (_wsOpen > 0 ? " on" : ""); }
+
+/* ================= Özet (düz yazı + soru-cevap) ================= */
+const X = { ex: null, pos: null, upd: null };
+function renderSummary() {
+  const box = document.getElementById("coinSum"); if (!box) return;
+  const ex = X.ex, pos = P.pos; if (!ex && !pos) return;
+  box.textContent = "";
+  const pf = (p) => p >= 100 ? p.toFixed(2) : p >= 1 ? p.toFixed(3) : p.toFixed(5), sg = (v, d) => (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(d);
+  const t = el("div", "sumtxt"); const part = (txt, b) => { if (b) t.appendChild(el("b", null, txt)); else t.appendChild(document.createTextNode(txt)); };
+  const px = ex && ex.length ? ex[0].px : null;
+  part(SYM, true); part(" şu an ");
+  if (px) part("$" + pf(px), true);
+  if (pos && ok(pos.pxCh)) part(" (24 saatte " + sg(pos.pxCh, 1) + "%)");
+  part(" fiyatında. ");
+  if (ex) {
+    const fs = ex.filter((x) => x.f != null); if (fs.length) { part("Fonlama oranı "); part(fs.map((x) => x.n + " " + sg(x.f, 4) + "%").join(", "), true);
+      const avg = fs.reduce((a, x) => a + x.f, 0) / fs.length; part(avg > 0.001 ? ": long'lar short'lara ödüyor. " : avg < -0.001 ? ": short'lar long'lara ödüyor. " : ": taraflar dengede. "); }
+    const tot = ex.reduce((a, x) => a + (x.oi || 0), 0); if (tot) { part("Üç borsada toplam açık pozisyon "); part(fmtM(tot), true); if (pos && ok(pos.oiCh)) part(" (Binance'te 24 saatte " + sg(pos.oiCh, 1) + "%)"); part(". "); }
+  }
+  if (pos && ok(pos.crowd)) { const lp = pos.crowd / (1 + pos.crowd) * 100; part("Binance hesaplarının "); part("%" + lp.toFixed(0) + " long", true); part(", %" + (100 - lp).toFixed(0) + " short. "); }
+  box.appendChild(t);
+  const qa = el("div", "qa");
+  const Q = (q, a) => { qa.appendChild(el("div", "q", q)); qa.appendChild(el("div", "a", a)); };
+  if (ex && ex.some((x) => x.f != null)) { const fs = ex.filter((x) => x.f != null), avg = fs.reduce((a, x) => a + x.f, 0) / fs.length;
+    Q(SYM + " fonlama oranı ne diyor?", avg > 0.03 ? "Aşırı pozitif: long'lar kalabalık ve pahalıya taşıyor, düzeltme riski yüksek." : avg > 0.001 ? "Hafif pozitif: long ağırlığı var ama aşırı değil." : avg < -0.01 ? "Negatif: short'lar kalabalık, yukarı yönlü sıkışma ihtimali var." : "Nötr: belirgin bir taraf baskısı yok."); }
+  if (pos && ok(pos.oiCh)) Q("Açık pozisyon artıyor mu?", pos.oiCh > 5 ? "Evet, 24 saatte " + sg(pos.oiCh, 1) + "%: piyasaya yeni pozisyon giriyor, hareket güçleniyor ya da kaldıraç birikiyor." : pos.oiCh < -5 ? "Hayır, " + sg(pos.oiCh, 1) + "%: pozisyonlar kapanıyor, hareket yoruluyor olabilir." : "Büyük bir değişim yok (" + sg(pos.oiCh, 1) + "%).");
+  if (pos && ok(pos.crowd)) Q("Kalabalık hangi tarafta?", pos.crowd > 1.5 ? "Aşırı long tarafta (L/S " + pos.crowd.toFixed(2) + "): ters yönde tasfiye riski var." : pos.crowd < 0.8 ? "Aşırı short tarafta (L/S " + pos.crowd.toFixed(2) + "): yukarı sıkışma ihtimali var." : "Dengeli (L/S " + pos.crowd.toFixed(2) + ").");
+  if (qa.children.length) box.appendChild(qa);
+  box.appendChild(el("div", "m", "Güncellendi: " + new Date().toLocaleString("tr-TR", { timeZone: "UTC", hour12: false, day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) + " UTC · Veri, yatırım tavsiyesi değildir."));
+}
+
+/* ================= Sıkışma skoru (0-100) ve OI anomalisi ================= */
+const clamp01 = (x) => Math.max(0, Math.min(1, x));
+function renderSqueeze() {
+  const box = document.getElementById("sqBox"), note = document.getElementById("sqNote"); if (!box) return;
+  const pos = P.pos; if (!pos) return;
+  const ex = X.ex && X.ex[0] && X.ex[0].n === "Binance" ? X.ex[0] : null;
+  const f = pos.funding, oiCh = pos.oiCh, ch = pos.pxCh, ratio = pos.crowd, lev = ex && ex.vol ? ex.oi / ex.vol : null;
+  const inp = [
+    ["Fonlama", ok(f), () => [clamp01(-f / 0.05), clamp01(f / 0.05)], ok(f) ? sgn(f, 4) + "%" : "–", 0.30],
+    ["OI değişimi", ok(oiCh), () => [clamp01(oiCh / 15), clamp01(oiCh / 15)], ok(oiCh) ? sgn(oiCh, 1) + "%" : "–", 0.20],
+    ["Fiyat hareketi", ok(ch), () => [clamp01(ch / 10), clamp01(-ch / 10)], ok(ch) ? sgn(ch, 1) + "%" : "–", 0.20],
+    ["Long/Short dağılımı", ok(ratio), () => [clamp01((1 / ratio - 1) / 0.5), clamp01((ratio - 1) / 0.5)], ok(ratio) ? "L/S " + ratio.toFixed(2) : "–", 0.20],
+    ["Kaldıraç (OI/hacim)", lev != null && isFinite(lev), () => [clamp01(lev / 0.5), clamp01(lev / 0.5)], lev != null && isFinite(lev) ? lev.toFixed(2) + "x" : "–", 0.10]
+  ].filter((x) => x[1]);
+  box.textContent = "";
+  if (inp.length < 2) { box.textContent = "Skor için yeterli veri yok."; return; }
+  const W = inp.reduce((a, x) => a + x[4], 0); let S = 0, L = 0; const rows = inp.map((x) => { const v = x[2](); S += v[0] * x[4]; L += v[1] * x[4]; return { n: x[0], s: v[0], l: v[1], val: x[3] }; });
+  S = Math.round(S / W * 100); L = Math.round(L / W * 100);
+  const lab = (v) => v >= 60 ? "yüksek stres" : v >= 35 ? "orta" : "düşük";
+  const bar = (title, v, col, key) => { const d = el("div", "sc"); const t = el("div", "t"); t.appendChild(el("b", null, title)); const r = el("span", null, v + " / 100 · " + lab(v)); r.style.color = col; t.appendChild(r); d.appendChild(t);
+    const tr = el("div", "tr"), i = document.createElement("i"); i.style.width = Math.max(3, v) + "%"; i.style.background = col; tr.appendChild(i); d.appendChild(tr);
+    d.appendChild(el("div", "parts", rows.map((x) => x.n + " " + x.val + " (" + Math.round(x[key] * 100) + ")").join(" · "))); return d; };
+  box.appendChild(bar("Short sıkışması (short'lar zorlanır, fiyat yukarı)", S, "var(--buy)", "s"));
+  box.appendChild(bar("Long sıkışması (long'lar zorlanır, fiyat aşağı)", L, "var(--sell)", "l"));
+  const z = oiAnomaly();
+  if (z) { const d = el("div", "zone", z.text); d.style.color = Math.abs(z.z) >= 2 ? "var(--watch)" : "var(--mute)"; d.style.marginTop = "8px"; box.appendChild(d); }
+  note.textContent = "Skor beş girdinin ağırlıklı ortalamasıdır (fonlama, OI değişimi, fiyat hareketi, long/short dağılımı, kaldıraç). Yüksek skor stresi anlatır, yön tahmini değildir. Parantez içindeki sayılar o girdinin 0-100 katkısıdır.";
+}
+function sgn(v, d) { return (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(d); }
+function oiAnomaly() {
+  const a = posData && posData.oi; if (!a || a.length < 24 * 5) return null;
+  const chg = []; for (let i = 24; i < a.length; i++) chg.push((a[i].v / a[i - 24].v - 1) * 100);
+  const cur = chg[chg.length - 1], base = chg.slice(Math.max(0, chg.length - 1 - 24 * 7), chg.length - 1);
+  const m = base.reduce((x, y) => x + y, 0) / base.length, sd = Math.sqrt(base.reduce((x, y) => x + (y - m) * (y - m), 0) / base.length) || 1, z = (cur - m) / sd;
+  const verdict = Math.abs(z) >= 2 ? (z > 0 ? "olağandışı artış: kaldıraç hızla birikiyor" : "olağandışı düşüş: pozisyonlar hızla kapanıyor") : "normal aralıkta";
+  return { z: z, text: "OI anomali testi: son 24 saatte açık pozisyon " + sgn(cur, 1) + "%, son 7 günün tipik değişimi " + sgn(m, 1) + "% ± " + sd.toFixed(1) + " → z = " + z.toFixed(1) + " (" + verdict + ")." };
+}
+
+/* ================= Tarayıcı (Bybit toplu veri: fiyat, fonlama, OI) ================= */
+let scrRows = null, scrKey = "vol";
+const SCR_SORT = [["vol", "Hacim"], ["oi", "OI"], ["fnU", "Fonlama ↑"], ["fnD", "Fonlama ↓"], ["chU", "24s ↑"], ["chD", "24s ↓"], ["lev", "Kaldıraç"]];
+function renderScrChips() { const b = document.getElementById("scrChips"); if (!b) return; b.textContent = "";
+  SCR_SORT.forEach(([k, l]) => { const c = el("button", "chip" + (k === scrKey ? " on" : ""), l); c.onclick = () => { scrKey = k; renderScrChips(); drawScr(); }; b.appendChild(c); }); }
+function drawScr() {
+  const box = document.getElementById("scrBox"); if (!box || !scrRows) return;
+  const keyf = { vol: (r) => r.vol, oi: (r) => r.oi, fnU: (r) => r.f, fnD: (r) => -r.f, chU: (r) => r.ch, chD: (r) => -r.ch, lev: (r) => r.lev };
+  const rows = scrRows.slice().sort((a, b) => keyf[scrKey](b) - keyf[scrKey](a)).slice(0, 20);
+  box.textContent = "";
+  const h = el("div", "scr h"); ["Coin", "Fiyat", "24s", "Fonlama", "OI"].forEach((x) => h.appendChild(el("span", null, x))); box.appendChild(h);
+  rows.forEach((r) => { const a = el("a", "scr"); a.href = "?c=" + r.s; a.appendChild(el("b", null, r.s));
+    a.appendChild(el("span", null, "$" + (r.px >= 100 ? r.px.toFixed(2) : r.px >= 1 ? r.px.toFixed(3) : r.px.toFixed(5))));
+    const c = el("span", null, sgn(r.ch, 1) + "%"); c.style.color = r.ch >= 0 ? "var(--buy)" : "var(--sell)"; a.appendChild(c);
+    const f = el("span", null, sgn(r.f, 3) + "%"); f.style.color = r.f > 0.03 ? "var(--sell)" : r.f < -0.01 ? "var(--buy)" : "var(--text)"; a.appendChild(f);
+    a.appendChild(el("span", null, fmtM(r.oi))); box.appendChild(a); });
+}
+async function loadScreen() {
+  const note = document.getElementById("scrNote");
+  try {
+    const j = await getJson("https://api.bybit.com/v5/market/tickers?category=linear");
+    scrRows = j.result.list.filter((x) => /USDT$/.test(x.symbol) && +x.turnover24h >= 1e6 && +x.openInterestValue > 0).map((x) => ({ s: x.symbol.slice(0, -4), px: +x.lastPrice, ch: +x.price24hPcnt * 100, f: +x.fundingRate * 100, oi: +x.openInterestValue, vol: +x.turnover24h, lev: +x.openInterestValue / +x.turnover24h }));
+    renderScrChips(); drawScr();
+    note.textContent = scrRows.length + " coin · kaynak Bybit vadeli (fiyat, fonlama, açık pozisyon). Kaldıraç = açık pozisyon / 24s hacim; yüksekse pozisyonlar hacme göre şişmiş demektir. Satıra dokununca o coin açılır.";
+  } catch (e) { document.getElementById("scrBox").textContent = "Tarayıcı verisi alınamadı (" + e.message + ")"; }
 }
 
 /* ================= Pozisyonlanma grafikleri ================= */
@@ -1382,7 +1504,7 @@ async function loadPos() {
   P.pos = { funding: last(posData.fr), oiCh: oiCh, pxCh: tick ? +tick.priceChangePercent : null, crowd: last(posData.ga), top: last(posData.tp), taker: avgLast(posData.tk, 24) };
   if (res[6].status === "fulfilled") P.fng = res[6].value;
   renderTop(res[7].status === "fulfilled" ? res[7].value : null, v(3));
-  drawPos(); renderPulse();
+  drawPos(); renderPulse(); renderSummary(); renderSqueeze();
   const bad = ["OI", "fonlama", "kalabalık L/S", "büyük oyuncu L/S", "taker"].filter((n, i) => !v(i));
   document.getElementById("posNote").textContent = bad.length ? "Alınamayan veriler: " + bad.join(", ") + " (Binance bu sembol için sunmuyor olabilir)." : "Kaynak: Binance vadeli istatistikleri, saatlik (son ~3 hafta).";
 }
@@ -1395,6 +1517,9 @@ const INFO2 = {
   "Kalabalık L/S (hesap)": "Long hesap sayısının short hesap sayısına oranı; çoğunluğu küçük yatırımcılardır. 1 üstü long ağırlıklı demektir. 1,5 üstü aşırı kalabalık long: ters yönde tasfiye riski. 0,8 altı kalabalık short: yukarı sıkışma ihtimali. Kalabalık sık yanıldığı için çoğu zaman ters sinyal olarak okunur.",
   "Kalabalık ve büyük oyuncu L/S": "Yeşil çizgi kalabalığın (küçük hesapların), mor çizgi en büyük hesapların long/short oranı. 1 üstü long, altı short ağırlığı. Kalabalık 1,5 üstündeyse aşırı long: ters yönde tasfiye riski. Büyükler 1,2 üstündeyse belirgin long. İki çizgi ayrışıyorsa dikkat: büyükler long kalabalık short ise yukarı ağırlık artar, tersi aşağı ağırlık. Not: iki oran farklı yöntemle hesaplanır (hesap sayısı ve pozisyon büyüklüğü), bu yüzden değerleri birebir kıyaslama, yönlerine ve eşiklerine bak.",
   "Emir defteri seyri": "Yeşil çizgi fiyatın ±%3 altındaki toplam alış emri, kırmızı çizgi ±%3 üstündeki toplam satış emri tutarı. Kırmızı çizgi düşüyorsa satış duvarı eriyor, yukarı çıkış kolaylaşıyor. Yeşil çizgi yükseliyorsa destek kalınlaşıyor. Yeşil kırmızıyı geçerse alıcılar baskın. Emirler hızla iptal edilebilir, tek başına işaret sayma.",
+  "sOzet": "Seçili coinin ana verilerinin düz yazı özeti ve en sık sorulan üç sorunun cevabı. Bütün rakamlar Binance, Bybit ve OKX'ten canlı hesaplanır.",
+  "sEkran": "Bybit vadelideki tüm coinleri tek tabloda sıralar. Fonlama ↑ en pozitif (long kalabalık), Fonlama ↓ en negatif (short kalabalık) coinleri üste getirir. Kaldıraç, açık pozisyonun 24 saatlik hacme oranıdır; yüksekse piyasa hacme göre aşırı kaldıraçlıdır ve sert hareket riski artar. Satıra dokununca o coin için panel açılır.",
+  "sSikis": "İki ayrı skor (0-100): short sıkışması, short'ların zorlandığı ve fiyatın yukarı fırlayabileceği baskıyı; long sıkışması, long'ların zorlandığı ve fiyatın aşağı kırılabileceği baskıyı ölçer. Beş girdi kullanılır: fonlama, açık pozisyon değişimi, fiyat hareketi, long/short dağılımı ve kaldıraç. 60 üstü yüksek stres demektir ama yön garantisi vermez. OI anomali testi, bugünkü açık pozisyon değişiminin son 7 güne göre ne kadar sıra dışı olduğunu gösterir (|z| 2 üstü olağandışı).",
   "sTara": "Binance vadelideki tüm USDT coinlerin taraması. Fonlaması çok negatif coinlerde short'lar kalabalıktır ve fiyat yükselirse sıkışma yaşanabilir; fonlaması çok pozitif coinlerde long'lar kalabalıktır ve düşüşte tasfiye riski vardır. Hareketliler listesi hangi coinlerin öne çıktığını gösterir. Altındaki canlı akış, tüm piyasada az önce kimlerin tasfiye edildiğini gösterir. Satıra dokununca o coin açılır.",
   "sBorsa": "Aynı coinin üç büyük borsadaki fiyatı, fonlama oranı ve açık pozisyonu. Borsalar arasında fonlama çok ayrışıyorsa bir borsada tek taraf kalabalıktır. Açık pozisyonun çoğu tek borsadaysa o borsadaki hareket fiyatı belirler. Fiyat farkı büyükse likidite zayıf demektir.",
   "sRobot": "Büyük bir emir defterine girip fiyat yaklaşmadan, kısa sürede geri çekiliyorsa buna hayalet emir (spoofing şüphesi) denir. Amaç genelde sahte bir duvar göstererek diğer yatırımcıları yanıltmaktır. Satış tarafında çok hayalet emir varsa aşağı baskı izlenimi, alış tarafında çoksa sahte destek izlenimi verilmeye çalışılıyor olabilir. Emri kimin koyduğu görünmez; burada yalnızca davranış örüntüsü yakalanır.",
@@ -1442,6 +1567,7 @@ async function loadBotStatus() {
 
 /* ================= Başlat ================= */
 setupCoin();
+loadScreen(); setInterval(loadScreen, 5 * 60 * 1000);
 loadScan(); setInterval(loadScan, 5 * 60 * 1000); scanLiqStart();
 loadExch(); setInterval(loadExch, 2 * 60 * 1000);
 renderStats();
@@ -1466,7 +1592,7 @@ setInterval(loadCharts, 10 * 60 * 1000);
 setInterval(loadLiq, 5 * 60 * 1000);
 document.getElementById("refreshBtn").onclick = async function () {
   const b = this; b.disabled = true; b.textContent = "Yenileniyor…";
-  try { await Promise.allSettled([loadMarket(), loadFeed(), loadLiq(), loadCharts(), loadPos(), loadWalls(), loadScan(), loadExch()]); } finally { b.disabled = false; b.textContent = "⟳ Yenile"; }
+  try { await Promise.allSettled([loadMarket(), loadFeed(), loadLiq(), loadCharts(), loadPos(), loadWalls(), loadScan(), loadExch(), loadScreen()]); } finally { b.disabled = false; b.textContent = "⟳ Yenile"; }
 };
 setInterval(loadMarket, MKT_REFRESH_MS);
 setInterval(loadFeed, FEED_REFRESH_MS);
