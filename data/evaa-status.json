@@ -1,18 +1,16 @@
 {
- "time": "2026-11-18T18:25:21.737Z",
- "errors": [
-  "Havuz: GeckoTerminal: 429"
- ],
- "price": 4.07,
+ "time": "2026-11-19T00:37:11.429Z",
+ "errors": [],
+ "price": 4.06272194592419,
  "scan": {
-  "from": 134349972,
-  "done": 134358972,
-  "latest": 134358972,
+  "from": 134399539,
+  "done": 134408539,
+  "latest": 134408539,
   "calls": 2,
   "error": null
  },
- "added": 3,
- "total": 469,
- "lastBlock": 134358972,
+ "added": 13,
+ "total": 482,
+ "lastBlock": 134408539,
  "rpc": "https://bsc-rpc.publicnode.com"
 }
