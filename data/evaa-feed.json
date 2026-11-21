@@ -7558,5 +7558,53 @@
     "evaa": 1208.9538865799998,
     "usd": 7501,
     "tags": []
+  },
+  {
+    "key": "0x4169cf3b8320cd293072ab3c7ec68e4fa192deab24115f6fae580a18987525bd:40",
+    "type": "transfer",
+    "chain": "bsc",
+    "time": "2026-11-21T20:47:03.000Z",
+    "hash": "0x4169cf3b8320cd293072ab3c7ec68e4fa192deab24115f6fae580a18987525bd",
+    "from": "0xed9ab5bc05a0152b9dc2f7902e8369af7bc18771",
+    "to": "0x39ac22b2063b9c64a4fc2d00b26cccc5271bd31b",
+    "evaa": 908.9758068399999,
+    "usd": 5804,
+    "tags": []
+  },
+  {
+    "key": "0x83eb0eacd18fd0c08060f7c2d3bd95d986af71024435523268c0b2456903d3bc:65",
+    "type": "transfer",
+    "chain": "bsc",
+    "time": "2026-11-21T20:49:32.000Z",
+    "hash": "0x83eb0eacd18fd0c08060f7c2d3bd95d986af71024435523268c0b2456903d3bc",
+    "from": "0xed9ab5bc05a0152b9dc2f7902e8369af7bc18771",
+    "to": "0x39ac22b2063b9c64a4fc2d00b26cccc5271bd31b",
+    "evaa": 790.9758068399999,
+    "usd": 5051,
+    "tags": []
+  },
+  {
+    "key": "0xd2b3e632118b8c73429c7315bf1cfa077884c9b264b83345d19fb7612441b0ee:79",
+    "type": "transfer",
+    "chain": "bsc",
+    "time": "2026-11-21T20:50:07.000Z",
+    "hash": "0xd2b3e632118b8c73429c7315bf1cfa077884c9b264b83345d19fb7612441b0ee",
+    "from": "0x39ac22b2063b9c64a4fc2d00b26cccc5271bd31b",
+    "to": "0x53f78a071d04224b8e254e243fffc6d9f2f3fa23",
+    "evaa": 908.9758068399999,
+    "usd": 5804,
+    "tags": []
+  },
+  {
+    "key": "0x59e827045ee62ee8f02676447ae58e03eec9dace31a76f92985ec4dec485bf73:65",
+    "type": "transfer",
+    "chain": "bsc",
+    "time": "2026-11-21T20:53:07.000Z",
+    "hash": "0x59e827045ee62ee8f02676447ae58e03eec9dace31a76f92985ec4dec485bf73",
+    "from": "0x39ac22b2063b9c64a4fc2d00b26cccc5271bd31b",
+    "to": "0x53f78a071d04224b8e254e243fffc6d9f2f3fa23",
+    "evaa": 1448.9516136799998,
+    "usd": 9252,
+    "tags": []
   }
 ]
