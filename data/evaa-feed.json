@@ -9730,5 +9730,89 @@
     "evaa": 3955.8633000000004,
     "usd": 12271,
     "tags": []
+  },
+  {
+    "key": "0xdf75145a4e9dc864d0cd5e769868a4bbb99d4d372c9e4cbe831713352c86a3d0:swap",
+    "type": "swap",
+    "chain": "bsc",
+    "time": "2026-11-26T14:01:04Z",
+    "hash": "0xdf75145a4e9dc864d0cd5e769868a4bbb99d4d372c9e4cbe831713352c86a3d0",
+    "wallet": "0x7cee8cc5aec9e6bc4c7b832fae0e7689f5dc773a",
+    "side": "buy",
+    "evaa": 2666.18003421561,
+    "usd": 9265,
+    "tags": []
+  },
+  {
+    "key": "0xa3fae6da2dc804e9e36bdee1739785e8bb6c99bc7e3f2a9617c9a64eb2a682ec:swap",
+    "type": "swap",
+    "chain": "bsc",
+    "time": "2026-11-26T14:01:04Z",
+    "hash": "0xa3fae6da2dc804e9e36bdee1739785e8bb6c99bc7e3f2a9617c9a64eb2a682ec",
+    "wallet": "0x823d6c5b57c35f13f53f1cb6785c4daadb599740",
+    "side": "sell",
+    "evaa": 2292.86897112883,
+    "usd": 7929,
+    "tags": []
+  },
+  {
+    "key": "0xdaa3ff80b409bce8007a0fa10a0970e719a1ad963a5919f31fc4aff82c130c2a:swap",
+    "type": "swap",
+    "chain": "bsc",
+    "time": "2026-11-26T14:47:29Z",
+    "hash": "0xdaa3ff80b409bce8007a0fa10a0970e719a1ad963a5919f31fc4aff82c130c2a",
+    "wallet": "0x266445d3d5179ffa5d56421508aeeff80c392f96",
+    "side": "buy",
+    "evaa": 5237.12540678836,
+    "usd": 18333,
+    "tags": []
+  },
+  {
+    "key": "0xd353bfea49da2cc14014fa190af7633fa1f7fef1aa4e9b03fb217fe42368a5bb:swap",
+    "type": "swap",
+    "chain": "bsc",
+    "time": "2026-11-26T14:47:29Z",
+    "hash": "0xd353bfea49da2cc14014fa190af7633fa1f7fef1aa4e9b03fb217fe42368a5bb",
+    "wallet": "0x1db96a54be55082ba95c01c55944c72bab376ef0",
+    "side": "sell",
+    "evaa": 2613.32557798739,
+    "usd": 8652,
+    "tags": []
+  },
+  {
+    "key": "0xc91ca493cf6a21b2a2fd90554996ab799bda0aa8a304e6968d334338a8ca0e74:swap",
+    "type": "swap",
+    "chain": "bsc",
+    "time": "2026-11-26T18:48:56Z",
+    "hash": "0xc91ca493cf6a21b2a2fd90554996ab799bda0aa8a304e6968d334338a8ca0e74",
+    "wallet": "0xf284ee2a4f1af3c9df499d5fc304200740b10062",
+    "side": "buy",
+    "evaa": 4503.97382860039,
+    "usd": 11328,
+    "tags": []
+  },
+  {
+    "key": "0x261aaf21d6979f7454b91da40b8466df091937ea9ef0db68c1251b070a6c9919:swap",
+    "type": "swap",
+    "chain": "bsc",
+    "time": "2026-11-26T18:48:56Z",
+    "hash": "0x261aaf21d6979f7454b91da40b8466df091937ea9ef0db68c1251b070a6c9919",
+    "wallet": "0xd6b397cd6909797c2992c8b3741b48cd2a82572f",
+    "side": "sell",
+    "evaa": 3873.34002424649,
+    "usd": 9633,
+    "tags": []
+  },
+  {
+    "key": "0x79eaa83ab1ea098cf45a899127eaa6939c6e5593bf1542f952c4b18e61511794:swap",
+    "type": "swap",
+    "chain": "bsc",
+    "time": "2026-11-26T18:49:34Z",
+    "hash": "0x79eaa83ab1ea098cf45a899127eaa6939c6e5593bf1542f952c4b18e61511794",
+    "wallet": "0x92ae2c1f012740e5b2e9ee9302277b0c4056ce6d",
+    "side": "buy",
+    "evaa": 3164.65301091253,
+    "usd": 7798,
+    "tags": []
   }
 ]
