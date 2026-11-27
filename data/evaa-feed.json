@@ -9814,5 +9814,65 @@
     "evaa": 3164.65301091253,
     "usd": 7798,
     "tags": []
+  },
+  {
+    "key": "0x444f6cdde54067dad09cefc0f9802f40bfddbbfc113dbd34bcc349ad55520dbc:315",
+    "type": "transfer",
+    "chain": "bsc",
+    "time": "2026-11-27T02:44:13.000Z",
+    "hash": "0x444f6cdde54067dad09cefc0f9802f40bfddbbfc113dbd34bcc349ad55520dbc",
+    "from": "0x0d0707963952f2fba59dd06f2b425ace40b492fe",
+    "to": "0x39ac22b2063b9c64a4fc2d00b26cccc5271bd31b",
+    "evaa": 7836.802000000001,
+    "usd": 18090,
+    "tags": []
+  },
+  {
+    "key": "0x5cd373a62754ce0079a406211661e269f1c58ca17507bc108ad4783cd454c1af:159",
+    "type": "transfer",
+    "chain": "bsc",
+    "time": "2026-11-27T02:47:07.000Z",
+    "hash": "0x5cd373a62754ce0079a406211661e269f1c58ca17507bc108ad4783cd454c1af",
+    "from": "0x39ac22b2063b9c64a4fc2d00b26cccc5271bd31b",
+    "to": "0x53f78a071d04224b8e254e243fffc6d9f2f3fa23",
+    "evaa": 7836.802000000001,
+    "usd": 18090,
+    "tags": []
+  },
+  {
+    "key": "0x9051e2a723618470451547b4e0ca1e881887b301153d601e9872f8c5a538389e:281",
+    "type": "transfer",
+    "chain": "bsc",
+    "time": "2026-11-27T02:59:04.000Z",
+    "hash": "0x9051e2a723618470451547b4e0ca1e881887b301153d601e9872f8c5a538389e",
+    "from": "0x73d8bd54f7cf5fab43fe4ef40a62d390644946db",
+    "to": "0xf975e7e240c59146e67971e2aa5497f0f22441ff",
+    "evaa": 2396.48273,
+    "usd": 5532,
+    "tags": []
+  },
+  {
+    "key": "0xc2f53ba3f138390094bcb583f0a26393e5f079a71a7fd7e25245f4ac89376776:375",
+    "type": "transfer",
+    "chain": "bsc",
+    "time": "2026-11-27T03:28:08.000Z",
+    "hash": "0xc2f53ba3f138390094bcb583f0a26393e5f079a71a7fd7e25245f4ac89376776",
+    "from": "0xd52e8e422a352ac1afdc2bd6ec533d41b20acb7b",
+    "to": "0x0789a11622e4eda0720e750540f6b14d0bb85a1c",
+    "evaa": 2292.510098017776,
+    "usd": 5292,
+    "tags": []
+  },
+  {
+    "key": "0xfe3ad9cd26676aaaf7034f44ecf67ebec7ea56ea468d4efdc2ef1c46131ebd01:465",
+    "type": "transfer",
+    "chain": "bsc",
+    "time": "2026-11-27T03:45:39.000Z",
+    "hash": "0xfe3ad9cd26676aaaf7034f44ecf67ebec7ea56ea468d4efdc2ef1c46131ebd01",
+    "from": "0x53f78a071d04224b8e254e243fffc6d9f2f3fa23",
+    "to": "0x566b30470d7ad97419a48900dc869bd7148736b8",
+    "evaa": 10005.5,
+    "usd": 23096,
+    "tags": []
   }
 ]
